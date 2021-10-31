@@ -7,7 +7,7 @@ def main():
     train = pd.read_csv('../data/loan_train.csv', sep=';')
     test = pd.read_csv('../data/loan_test.csv', sep=';')
 
-    train['status'] = train['status'].apply(lambda x: 0 if x == -1 else x)
+    train['status'] = train['status'].apply(lambda x: 1 if x == -1 else 0)
 
     X, y = train.iloc[:, :-1], train.iloc[:, -1]
 
