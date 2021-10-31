@@ -1,4 +1,5 @@
 
+import numpy as np
 import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
@@ -28,7 +29,7 @@ def main():
     test = test.sort_values(by='loan_id')
 
     X = test.iloc[:, :-1]
-    y = dtc.predict(X)
+    y = np.round(dtc.predict_proba(X)[:, -1], 5)
 
     submission = X[['loan_id']].copy()
     submission = submission.rename(columns={'loan_id': 'Id'})
