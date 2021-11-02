@@ -13,7 +13,7 @@ def main():
 
     X, y = train.iloc[:, :-1], train.iloc[:, -1]
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=0)
 
     dtc = DecisionTreeClassifier(random_state=0, max_depth=3)
 
