@@ -28,9 +28,7 @@ def clean_district_data(district):
         'no. of commited crimes \'96 ': 'crimes_96',
     })
 
-    district['crimes_95'] = district['crimes_95'].astype(int)
-
-    print(district.dtypes)
+    district['crimes_95'] = pd.to_numeric(district['crimes_95'], errors='coerce')
 
     district['crimes_95_per_1000'] = district['crimes_95'] / district['population'] * 1000
     district['crimes_96_per_1000'] = district['crimes_96'] / district['population'] * 1000
@@ -47,7 +45,7 @@ def get_loan_account_district_data(remove_non_numeric=False):
 
     district = clean_district_data(district)
 
-    account_district = pd.merge(left=account, right=district, left_on='district_id', right_on='code ')
+    account_district = pd.merge(left=account, right=district, left_on='district_id', right_on='code')
 
     dev = pd.merge(left=loan_dev, right=account_district, left_on='account_id', right_on='account_id')
     competition  = pd.merge(left=loan_competition , right=account_district, left_on='account_id', right_on='account_id')
@@ -55,6 +53,8 @@ def get_loan_account_district_data(remove_non_numeric=False):
     if remove_non_numeric:
         dev = dev.select_dtypes(['number']).copy()
         competition = competition.select_dtypes(['number']).copy()
+
+    dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
 
     return dev, competition
 

@@ -1,5 +1,5 @@
 
-from data import get_loan_data
+from data import *
 
 import os
 import numpy as np
@@ -9,6 +9,7 @@ from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.metrics import roc_auc_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
 
 def save_submission(X, y):
     submission = X[['loan_id']].copy()
@@ -19,25 +20,31 @@ def save_submission(X, y):
     submission.to_csv('../data/submissions/simple.csv', index=False)
 
 def main():
-    train, test = get_loan_data()
+    dev, competition = get_loan_account_district_data(remove_non_numeric=True)
 
-    X, y = train.iloc[:, :-1], train.iloc[:, -1]
+    X, y = dev.loc[:, dev.columns != 'status'], dev.loc[:, 'status']
 
-    estimator = GaussianNB()
+    param_grid = {
+        'n_neighbors': [5, 10, 20],
+        'weights': ['uniform', 'distance'],
+        'algorithm': ['ball_tree', 'kd_tree', 'brute']
+    }
+
+    estimator = KNeighborsClassifier()
     cv = StratifiedKFold()
-    clf = GridSearchCV(estimator, param_grid={}, scoring='roc_auc', cv=cv)
+    clf = GridSearchCV(estimator, param_grid=param_grid, scoring='roc_auc', cv=cv)
 
     clf.fit(X, y)
 
     auc = clf.best_score_
     print(f'AUC score: {auc}')
 
-    test = test.sort_values(by='loan_id')
+    competition = competition.sort_values(by='loan_id')
 
-    X = test.iloc[:, :-1]
+    X = competition.loc[:, competition.columns != 'status']
     y = np.round(clf.predict_proba(X)[:, -1], 5)
 
     save_submission(X, y)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
