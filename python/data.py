@@ -54,7 +54,8 @@ def get_loan_account_district_data(remove_non_numeric=False):
         dev = dev.select_dtypes(['number']).copy()
         competition = competition.select_dtypes(['number']).copy()
 
-    dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
+    # district_id 69 has ? values
+    # dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
 
     return dev, competition
 
