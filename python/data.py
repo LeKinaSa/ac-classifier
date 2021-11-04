@@ -41,7 +41,7 @@ def get_loan_account_district_data(remove_non_numeric=False):
     loan_dev, loan_competition = get_loan_data()
 
     account = pd.read_csv('../data/account.csv', sep=';')
-    district = pd.read_csv('../data/district.csv', sep=';')
+    district = pd.read_csv('../data/district.csv', sep=';', na_values='?')
 
     district = clean_district_data(district)
 
@@ -54,9 +54,11 @@ def get_loan_account_district_data(remove_non_numeric=False):
         dev = dev.select_dtypes(['number']).copy()
         competition = competition.select_dtypes(['number']).copy()
 
-    # district_id 69 has ? values
-    # dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
-
+    competition = competition.fillna(value={
+        'crimes_95_per_1000' : competition['crimes_96_per_1000'],
+        'unemployment_rate_95' : competition['unemployment_rate_96']
+    })
+    
     return dev, competition
 
 def main():
