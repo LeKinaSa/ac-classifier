@@ -29,6 +29,7 @@ def clean_district_data(district):
     })
 
     district['crimes_95'] = pd.to_numeric(district['crimes_95'], errors='coerce')
+    district['crimes_95'].fillna(district['crimes_96'], inplace=True)
 
     district['crimes_95_per_1000'] = district['crimes_95'] / district['population'] * 1000
     district['crimes_96_per_1000'] = district['crimes_96'] / district['population'] * 1000
@@ -55,7 +56,7 @@ def get_loan_account_district_data(remove_non_numeric=False):
         competition = competition.select_dtypes(['number']).copy()
 
     # district_id 69 has ? values
-    # dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
+    dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
 
     return dev, competition
 

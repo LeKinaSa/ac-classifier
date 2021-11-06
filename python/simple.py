@@ -24,7 +24,6 @@ def save_submission(X, y):
 def main():
     dev, competition = get_loan_account_district_data(remove_non_numeric=True)
 
-    # print(dev.columns)
     dev         =         dev.drop(['account_id', 'district_id'], axis=1)
     competition = competition.drop(['account_id', 'district_id'], axis=1)
 
@@ -38,11 +37,15 @@ def main():
     #     estimators=estimators, final_estimator=LogisticRegression()
     # )
     
-    estimator = KNeighborsClassifier()
+    estimator = RandomForestClassifier()
+    # param_grid = {
+    #     'n_neighbors': [5, 10, 20],
+    #     'weights': ['uniform', 'distance'],
+    #     'algorithm': ['ball_tree', 'kd_tree', 'brute']
+    # }
     param_grid = {
-        'n_neighbors': [5, 10, 20],
-        'weights': ['uniform', 'distance'],
-        'algorithm': ['ball_tree', 'kd_tree', 'brute']
+        'criterion': ['gini', 'entropy'],
+        'max_depth': [5, 10, None],
     }
 
     cv = StratifiedKFold()
