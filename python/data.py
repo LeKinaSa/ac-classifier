@@ -14,15 +14,15 @@ def clean_district_data(district):
         'code ': 'code',
         'name ': 'name',
         'no. of inhabitants': 'population',
-        'no. of municipalities with inhabitants < 499  ': 'muni_under499',
+        'no. of municipalities with inhabitants < 499 ': 'muni_under499',
         'no. of municipalities with inhabitants 500-1999': 'muni_500_1999',
         'no. of municipalities with inhabitants 2000-9999 ': 'muni_2000_9999',
         'no. of municipalities with inhabitants >10000 ' : 'muni_over10000',
         'no. of cities ' : 'n_cities',
         'ratio of urban inhabitants ': 'ratio_urban',
         'average salary ': 'avg_salary',
-        'unemploymant rate \'95 ' : 'unemployment_rate_95',
-        'unemploymant rate \'96 ' : 'unemployment_rate_96',
+        'unemploymant rate \'95 ' : 'unemployment_95',
+        'unemploymant rate \'96 ' : 'unemployment_96',
         'no. of enterpreneurs per 1000 inhabitants ' : 'enterpreneurs_per_1000',
         'no. of commited crimes \'95 ' : 'crimes_95',
         'no. of commited crimes \'96 ': 'crimes_96',
@@ -30,6 +30,9 @@ def clean_district_data(district):
 
     district['crimes_95'] = pd.to_numeric(district['crimes_95'], errors='coerce')
     district['crimes_95'].fillna(district['crimes_96'], inplace=True)
+
+    district['unemployment_95'] = pd.to_numeric(district['unemployment_95'], errors='coerce')
+    district['unemployment_95'].fillna(district['unemployment_96'], inplace=True)
 
     district['crimes_95_per_1000'] = district['crimes_95'] / district['population'] * 1000
     district['crimes_96_per_1000'] = district['crimes_96'] / district['population'] * 1000
@@ -54,9 +57,6 @@ def get_loan_account_district_data(remove_non_numeric=False):
     if remove_non_numeric:
         dev = dev.select_dtypes(['number']).copy()
         competition = competition.select_dtypes(['number']).copy()
-
-    # district_id 69 has ? values
-    dev, competition = dev.dropna(), competition.dropna(subset=['crimes_95_per_1000'])
 
     return dev, competition
 
