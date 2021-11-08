@@ -10,7 +10,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 
 def save_submission(competition, y):
@@ -46,6 +46,22 @@ def model_learning_and_classification(estimator, param_grid={}):
 
 def main():
     classifiers = {
+        'DTC' : (
+            DecisionTreeClassifier(),
+            {
+                'criterion': ['gini', 'entropy'],
+                'max_depth': [3, 5, 10, None],
+                'class_weight': [None, 'balanced']
+            }
+        ),
+        'RFC' : (
+            RandomForestClassifier(),
+            {
+                'n_estimators': [50, 100, 150],
+                'criterion': ['gini', 'entropy'],
+                'class_weight': ['balanced', 'balanced_subsample', None]
+            }
+        ),
         'KNC' : (
             KNeighborsClassifier(),
             {
@@ -61,6 +77,23 @@ def main():
                 'probability': [True]
             }
         ),
+        'ABC' : (
+            AdaBoostClassifier(),
+            {
+                'algorithm': ['SAMME', 'SAMME.R'],
+                'base_estimator': [DecisionTreeClassifier(), SVC(probability=True), RandomForestClassifier(), LogisticRegression()],
+                'n_estimators': [25, 50, 75]
+            }
+        ),
+        'GBC' : (
+            GradientBoostingClassifier(),
+            {
+                'loss': ['deviance', 'exponential'],
+                'criterion': ['friedman_mse', 'squared_error'],
+                'max_depth': [2, 3, 4, 5],
+                'max_features': ['sqrt', 'log2', None]
+            }
+        ),
         # 'StC' : (
         #     StackingClassifier(
         #         estimators=[
@@ -71,22 +104,11 @@ def main():
         #     ),
         #     {}
         # ),
-        'DTC' : (
-            DecisionTreeClassifier(),
-            {
-                'criterion': ['gini', 'entropy'],
-                'max_depth': [3, 5, 10, None],
-                'class_weight': [None, 'balanced']
-            }
-        ),
-        'ABC' : (
-            AdaBoostClassifier(),
-            {}
-        )
     }
 
     best_results = (None, None)
     best_auc = 0
+    best_classifier = None
     for classifier in classifiers:
         print(f'Classifier: {classifier}')
         (estimator, param_grid) = classifiers[classifier]
@@ -97,8 +119,11 @@ def main():
         print(f'Best params: {best_params}')
 
         if best_auc < auc:
+            best_auc = auc
+            best_classifier = classifier
             best_results = results
         
+    print(f'\nBest classifier: {best_classifier}')
     (competition, prediction) = best_results
     save_submission(competition, prediction)
 
