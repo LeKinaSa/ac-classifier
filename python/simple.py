@@ -1,5 +1,5 @@
 
-from data import *
+from data import get_loan_account_district_data
 
 import os
 import numpy as np
@@ -10,7 +10,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, StackingClassifier
+from sklearn.ensemble import RandomForestClassifier, StackingClassifier, AdaBoostClassifier
+from sklearn.svm import SVC
 
 def save_submission(competition, y):
     submission = competition[['loan_id']].copy()
@@ -20,7 +21,7 @@ def save_submission(competition, y):
     os.makedirs('../data/submissions/', exist_ok=True)
     submission.to_csv('../data/submissions/simple.csv', index=False)
 
-def main():
+def model_learning_and_classification(estimator, param_grid={}):
     dev, competition = get_loan_account_district_data(remove_non_numeric=True)
 
     to_drop = ['account_id', 'district_id', 'code', 'date_x', 'date_y', 'payments']
@@ -30,44 +31,76 @@ def main():
 
     X, y = dev.loc[:, ~dev.columns.isin(['loan_id', 'status'])], dev.loc[:, 'status']
 
-    # estimators = [
-    #     ('rf', RandomForestClassifier(n_estimators=10, random_state=42)),
-    #     ('knc', KNeighborsClassifier())
-    # ]
-    # estimator = StackingClassifier(
-    #     estimators=estimators, final_estimator=LogisticRegression()
-    # )
-    
-    estimator = KNeighborsClassifier()
-    param_grid = {
-        'n_neighbors': [5, 10, 20],
-        'weights': ['uniform', 'distance'],
-        'algorithm': ['ball_tree', 'kd_tree', 'brute'],
-        'p': [1, 2, 3],
-    }
-
-    # DecisionTreeClassifier param_grid
-    # param_grid = {
-    #     'criterion': ['gini', 'entropy'],
-    #     'max_depth': [3, 5, 10, None],
-    #     'class_weight': [None, 'balanced']
-    # }
-
     cv = StratifiedKFold()
     clf = GridSearchCV(estimator, param_grid=param_grid, scoring='roc_auc', cv=cv)
 
     clf.fit(X, y)
 
     auc = clf.best_score_
-    print(f'AUC score: {auc}')
-
     best_params = clf.best_params_
-    print(f'Best params: {best_params}')
 
     X = competition.loc[:, ~competition.columns.isin(['loan_id', 'status'])]
     y = np.round(clf.predict_proba(X)[:, -1], 5)
 
-    save_submission(competition, y)
+    return ((auc, best_params), (competition, y))
+
+def main():
+    classifiers = {
+        'KNC' : (
+            KNeighborsClassifier(),
+            {
+                'n_neighbors': [5, 10, 20],
+                'weights': ['uniform', 'distance'],
+                'algorithm': ['ball_tree', 'kd_tree', 'brute'],
+                'p': [1, 2, 3],
+            }
+        ),
+        'SVC' : (
+            SVC(),
+            {
+                'probability': [True]
+            }
+        ),
+        # 'StC' : (
+        #     StackingClassifier(
+        #         estimators=[
+        #             RandomForestClassifier(n_estimators=10, random_state=42),
+        #             KNeighborsClassifier()
+        #         ],
+        #         final_estimator=LogisticRegression()
+        #     ),
+        #     {}
+        # ),
+        'DTC' : (
+            DecisionTreeClassifier(),
+            {
+                'criterion': ['gini', 'entropy'],
+                'max_depth': [3, 5, 10, None],
+                'class_weight': [None, 'balanced']
+            }
+        ),
+        'ABC' : (
+            AdaBoostClassifier(),
+            {}
+        )
+    }
+
+    best_results = (None, None)
+    best_auc = 0
+    for classifier in classifiers:
+        print(f'Classifier: {classifier}')
+        (estimator, param_grid) = classifiers[classifier]
+        (scores, results) = model_learning_and_classification(estimator, param_grid)
+        
+        (auc, best_params) = scores
+        print(f'AUC score: {auc}')
+        print(f'Best params: {best_params}')
+
+        if best_auc < auc:
+            best_results = results
+        
+    (competition, prediction) = best_results
+    save_submission(competition, prediction)
 
 if __name__ == '__main__':
     main()
