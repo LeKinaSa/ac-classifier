@@ -61,6 +61,11 @@ def get_loan_account_district_data(remove_non_numeric=False):
     return dev, competition
 
 def get_card_data():
+    # Available Columns
+    #   card_id
+    #   disp_id
+    #   type
+    #   issued
     dev = pd.read_csv('../data/card_train.csv', sep=';')
     competition = pd.read_csv('../data/card_test.csv', sep=';')
     return dev, competition

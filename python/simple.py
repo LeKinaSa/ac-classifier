@@ -94,16 +94,16 @@ def main():
                 'max_features': ['sqrt', 'log2', None]
             }
         ),
-        # 'StC' : (
-        #     StackingClassifier(
-        #         estimators=[
-        #             RandomForestClassifier(n_estimators=10, random_state=42),
-        #             KNeighborsClassifier()
-        #         ],
-        #         final_estimator=LogisticRegression()
-        #     ),
-        #     {}
-        # ),
+        'StC' : (
+            StackingClassifier(
+                estimators=[
+                    RandomForestClassifier(n_estimators=10, random_state=42),
+                    KNeighborsClassifier()
+                ],
+                final_estimator=LogisticRegression()
+            ),
+            {}
+        ),
     }
 
     best_results = (None, None)
