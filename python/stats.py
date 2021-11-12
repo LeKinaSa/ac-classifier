@@ -33,6 +33,33 @@ def percentage_plot(df, group, hue):
 
 dev, comp = data.get_loan_account_district_data()
 
+def percentage_plot(df, group, hue):
+    group_counts = df.groupby(group)[hue].value_counts()
+    
+    keys = group_counts.to_dict().keys()
+
+    order = remove_dups(list(map(lambda x: x[0], keys)))
+    hue_order = remove_dups(list(map(lambda x: x[1], keys)))
+
+    df = (df.groupby(group)[hue]
+            .value_counts(normalize=True).mul(100)
+            .rename('percentage').reset_index())
+    graph = seaborn.catplot(data=df, x=group, y='percentage', kind='bar', 
+            hue=hue, order=order, hue_order=hue_order)
+    ax = graph.facet_axis(0, 0)
+    for i, p in enumerate(ax.patches):
+        coords = p.get_x() + p.get_width() / 2, p.get_height() + 2
+
+        value = group_counts.iloc[i] # TODO
+        ax.annotate(
+            '{0:.1f}% ({1})'.format(p.get_height(), value), coords,
+            ha='center', color='black', rotation='horizontal',
+        )
+    return graph
+
+
+dev, comp = data.get_loan_account_district_data()
+
 print(dev.nunique())
 print(dev.dtypes)
 
@@ -58,6 +85,17 @@ seaborn.displot(dev, x="amount", hue="status", hue_order=[0, 1], multiple="dodge
 plt.show()
 
 seaborn.kdeplot(x="date_x", hue="status", data=dev)
+plt.show()
+
+dev['frequency_percent'] = dev.groupby('status')['frequency'].apply(lambda x: 100*x/x.sum())
+print(len(dev[dev['frequency'] == 'weekly issuance']))
+print(dev.groupby(['frequency', 'status']).sum())
+
+df = dev.groupby('frequency')['status'].value_counts(normalize=True).mul(100).rename('percentage').reset_index()
+seaborn.displot(data=df, x='frequency')
+plt.show()
+
+percentage_plot(dev, 'frequency', 'status')
 plt.show()
 
 dev['frequency_percent'] = dev.groupby('status')['frequency'].apply(lambda x: 100*x/x.sum())
