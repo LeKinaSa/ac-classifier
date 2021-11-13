@@ -112,6 +112,9 @@ plt.show()
 percentage_plot(dev, 'region', 'status')
 plt.show()
 
+seaborn.displot(data=dev, x='region', hue='status', hue_order=[0,1], multiple='fill')
+plt.show()
+
 seaborn.kdeplot(x="date_x", hue="status", data=comp)
 plt.show()
 

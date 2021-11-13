@@ -42,6 +42,33 @@ def clean_district_data(district):
     return district
 
 def get_loan_account_district_data(remove_non_numeric=False):
+    # Available Columns
+    #   loan_id
+    #   account_id
+    #   date_x
+    #   amount
+    #   duration
+    #   payments
+    #   status
+    #   district_id
+    #   frequency
+    #   date_y
+    #   code
+    #   name
+    #   region
+    #   population
+    #   muni_under499
+    #   muni_500_1999
+    #   muni_2000_9999
+    #   muni_over10000
+    #   n_cities
+    #   ratio_urban
+    #   avg_salary
+    #   unemployment_95
+    #   unemployment_96
+    #   enterpreneurs_per_1000
+    #   crimes_95_per_1000
+    #   crimes_96_per_1000
     loan_dev, loan_competition = get_loan_data()
 
     account = pd.read_csv('../data/account.csv', sep=';')
@@ -72,13 +99,61 @@ def get_card_data():
 
 def get_transactions_data():
     # TODO: sys:1: DtypeWarning: Columns (8) have mixed types.Specify dtype option on import or set low_memory=False.
+    
+    # Available Columns
+    #   trans_id
+    #   account_id
+    #   date
+    #   type
+    #   operation
+    #   amount
+    #   balance
+    #   k_symbol
+    #   bank
+    #   account
     dev = pd.read_csv('../data/trans_train.csv', sep=';')
     competition = pd.read_csv('../data/trans_test.csv', sep=';')
     return dev, competition
 
+def get_client_data():
+    # Available Columns
+    #   client_id
+    #   birthday
+    #   sex
+    #   district_id
+    client = pd.read_csv('../data/client.csv', sep=';')
+    client['birthday'] = client['birth_number'].apply(lambda x: get_birthday_from_birth_number(x))
+    client['sex'] = client['birth_number'].apply(lambda x: get_sex_from_birth_number(x))
+    client = client.drop('birth_number', axis=1)
+    return client
+
+def get_birthday_from_birth_number(birth_number):
+    year           =  birth_number // 10000
+    month_with_sex = (birth_number %  10000) // 100
+    day            =  birth_number % 100
+    month = month_with_sex % 50
+    return year * 10000 + month * 100 + day
+
+def get_sex_from_birth_number(birth_number):
+    month_with_sex = (birth_number %  10000) // 100
+    return month_with_sex > 50
+
+def get_disposition_data():
+    # Available Columns
+    #   disp_id
+    #   client_id
+    #   account_id
+    #   type
+    disposition = pd.read_csv('../data/disp.csv', sep=';')
+    return disposition
+
 def main():
-    with pd.option_context('display.max_columns', None):
-        print(get_loan_account_district_data(remove_non_numeric=True)[0].iloc[[0]])
+    #with pd.option_context('display.max_columns', None):
+    #    print(get_loan_account_district_data(remove_non_numeric=True)[0].iloc[[0]])
+
+    clients = get_client_data()
+    print(clients.nunique())
+    print(clients.dtypes)
 
 if __name__ == '__main__':
     main()
