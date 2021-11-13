@@ -81,7 +81,14 @@ def main():
             AdaBoostClassifier(),
             {
                 'algorithm': ['SAMME', 'SAMME.R'],
-                'base_estimator': [DecisionTreeClassifier(), SVC(probability=True), RandomForestClassifier(), LogisticRegression()],
+                'base_estimator': [
+                    DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
+                    RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
+                    # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
+                    SVC(probability=True),
+                    GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
+                    LogisticRegression()
+                ],
                 'n_estimators': [25, 50, 75]
             }
         ),
@@ -92,6 +99,15 @@ def main():
                 'criterion': ['friedman_mse', 'squared_error'],
                 'max_depth': [2, 3, 4, 5],
                 'max_features': ['sqrt', 'log2', None]
+            }
+        ),
+        'LGR': (
+            LogisticRegression(),
+            {
+                'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
+                'class_weight': [None, ],
+                'max_iter': [50, 100, 150, 250, 500], 
+                'n_jobs': [None, 1, 2, 3],           
             }
         ),
         'StC' : (
