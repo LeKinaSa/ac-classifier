@@ -1,5 +1,6 @@
 
 import pandas as pd
+import os.path
 
 def get_loan_data():
     dev = pd.read_csv('../data/loan_train.csv', sep=';')
@@ -98,8 +99,6 @@ def get_card_data():
     return dev, competition
 
 def get_transactions_data():
-    # TODO: sys:1: DtypeWarning: Columns (8) have mixed types.Specify dtype option on import or set low_memory=False.
-    
     # Available Columns
     #   trans_id
     #   account_id
@@ -111,7 +110,18 @@ def get_transactions_data():
     #   k_symbol
     #   bank
     #   account
-    dev = pd.read_csv('../data/trans_train.csv', sep=';')
+    dev = pd.read_csv('../data/trans_train.csv', sep=';', dtype={
+        'trans_id': int,
+        'account_id': int,
+        'date': int,
+        'type': 'category',
+        'operation': 'category',
+        'amount': float,
+        'balance': float,
+        'k_symbol': 'category',
+        'bank': 'category',
+        'account': 'Int64'
+    })
     competition = pd.read_csv('../data/trans_test.csv', sep=';')
     return dev, competition
 
@@ -151,9 +161,12 @@ def main():
     #with pd.option_context('display.max_columns', None):
     #    print(get_loan_account_district_data(remove_non_numeric=True)[0].iloc[[0]])
 
-    clients = get_client_data()
-    print(clients.nunique())
-    print(clients.dtypes)
+    # clients = get_client_data()
+    # print(clients.nunique())
+    # print(clients.dtypes)
+
+    transactions = get_transactions_data()
+    print(transactions[0].head())
 
 if __name__ == '__main__':
     main()
