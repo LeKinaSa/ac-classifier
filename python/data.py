@@ -10,8 +10,8 @@ def get_loan_data():
 
     return dev, competition
 
-def clean_district_data(district):
-    district = district.rename(columns={
+def clean_district_data(df):
+    df = df.rename(columns={
         'code ': 'code',
         'name ': 'name',
         'no. of inhabitants': 'population',
@@ -29,18 +29,17 @@ def clean_district_data(district):
         'no. of commited crimes \'96 ': 'crimes_96',
     })
 
-    district['crimes_95'] = pd.to_numeric(district['crimes_95'], errors='coerce')
-    district['crimes_95'].fillna(district['crimes_96'], inplace=True)
+    df['crimes_95'] = pd.to_numeric(df['crimes_95'], errors='coerce')
+    df['crimes_95'].fillna(df['crimes_96'], inplace=True)
 
-    district['unemployment_95'] = pd.to_numeric(district['unemployment_95'], errors='coerce')
-    district['unemployment_95'].fillna(district['unemployment_96'], inplace=True)
+    df['unemployment_95'] = pd.to_numeric(df['unemployment_95'], errors='coerce')
+    df['unemployment_95'].fillna(df['unemployment_96'], inplace=True)
 
-    district['crimes_95_per_1000'] = district['crimes_95'] / district['population'] * 1000
-    district['crimes_96_per_1000'] = district['crimes_96'] / district['population'] * 1000
+    df['crimes_95_per_1000'] = df['crimes_95'] / df['population'] * 1000
+    df['crimes_96_per_1000'] = df['crimes_96'] / df['population'] * 1000
 
-    district = district.drop(['crimes_95', 'crimes_96'], axis=1)
-
-    return district
+    df = df.drop(['crimes_95', 'crimes_96'], axis=1)
+    return df
 
 def get_loan_account_district_data(remove_non_numeric=False):
     # Available Columns
@@ -80,7 +79,7 @@ def get_loan_account_district_data(remove_non_numeric=False):
     account_district = pd.merge(left=account, right=district, left_on='district_id', right_on='code')
 
     dev = pd.merge(left=loan_dev, right=account_district, left_on='account_id', right_on='account_id')
-    competition  = pd.merge(left=loan_competition , right=account_district, left_on='account_id', right_on='account_id')
+    competition = pd.merge(left=loan_competition, right=account_district, left_on='account_id', right_on='account_id')
 
     if remove_non_numeric:
         dev = dev.select_dtypes(['number']).copy()
@@ -133,20 +132,20 @@ def get_client_data():
     #   district_id
     client = pd.read_csv('../data/client.csv', sep=';')
     client['birthday'] = client['birth_number'].apply(lambda x: get_birthday_from_birth_number(x))
-    client['sex'] = client['birth_number'].apply(lambda x: get_sex_from_birth_number(x))
+    client['gender'] = client['birth_number'].apply(lambda x: get_gender_from_birth_number(x))
     client = client.drop('birth_number', axis=1)
     return client
 
 def get_birthday_from_birth_number(birth_number):
-    year           =  birth_number // 10000
-    month_with_sex = (birth_number %  10000) // 100
-    day            =  birth_number % 100
-    month = month_with_sex % 50
-    return year * 10000 + month * 100 + day
+    year              = birth_number // 10000
+    month_with_gender = (birth_number % 10000) // 100
+    day               = birth_number % 100
+    month = month_with_gender % 50
+    return '-'.join(['19' + str(year).zfill(2), str(month).zfill(2), str(day).zfill(2)])
 
-def get_sex_from_birth_number(birth_number):
-    month_with_sex = (birth_number %  10000) // 100
-    return month_with_sex > 50
+def get_gender_from_birth_number(birth_number):
+    month_with_gender = (birth_number % 10000) // 100
+    return 'Female' if month_with_gender > 50 else 'Male'
 
 def get_disposition_data():
     # Available Columns
@@ -154,7 +153,12 @@ def get_disposition_data():
     #   client_id
     #   account_id
     #   type
-    disposition = pd.read_csv('../data/disp.csv', sep=';')
+    disposition = pd.read_csv('../data/disp.csv', sep=';', dtype={
+        'distp_id': int,
+        'client_id': int,
+        'account_id': int,
+        'type': 'category',
+    })
     return disposition
 
 def main():
@@ -165,8 +169,8 @@ def main():
     # print(clients.nunique())
     # print(clients.dtypes)
 
-    transactions = get_transactions_data()
-    print(transactions[0].head())
+    transactions = get_disposition_data()
+    print(transactions.head())
 
 if __name__ == '__main__':
     main()
