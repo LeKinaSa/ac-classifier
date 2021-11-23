@@ -107,11 +107,11 @@ print('Transactions without a bank:', trans_dev['bank'].isna().sum())
 sb.countplot(data=trans_dev, x='bank')
 plt.show()
 
-sb.countplot(data=dev, x='account_id')
+sb.countplot(data=dev, x='account_id') # Check the number of loans per account
 plt.show()
 
 ## Owners ###
-owners = data.get_account_owners_data()
+owners = data.get_account_owner_data()
 loan_owner_client_dev, loan_owner_client_comp = data.get_loan_client_owner_data()
 
 sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
@@ -136,6 +136,3 @@ print(loan_owner['same_district'].nunique())
 loan_owner_districts, _ = data.get_loan_client_owner_district_data()
 loan_owner_districts['same_region'] = loan_owner_districts['region_account'] == loan_owner_districts['region_owner']
 print(loan_owner_districts['same_region'].nunique())
-
-# Há vários loans por conta? Se o cliente já pagou um loan, tem mais probabilidade de pagar outro?
-# 2 novas variáveis: nº de loans por cliente, percentagem de loans pagas

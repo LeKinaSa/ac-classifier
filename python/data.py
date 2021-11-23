@@ -154,8 +154,7 @@ def get_disposition_data(): # Disposition (disp)
 
 ### Merged Tables ###
 
-def get_loan_account_district_data(remove_non_numeric=False):
-    # Tables: loan, account, district
+def get_loan_account_district_data(remove_non_numeric=False): # Loan, Account, District
     # Available Columns
     #   loan_id
     #   account_id
@@ -183,6 +182,7 @@ def get_loan_account_district_data(remove_non_numeric=False):
     #   enterpreneurs_per_1000
     #   crimes_95_per_1000
     #   crimes_96_per_1000
+
     loan_dev, loan_competition = get_loan_data()
 
     account = get_account_data()
@@ -199,24 +199,23 @@ def get_loan_account_district_data(remove_non_numeric=False):
 
     return dev, competition
 
-def get_account_owners_data():
-    # Tables: client, disp(owners)
+def get_account_owner_data(): # Client, Disposition(owner)
     # Available Columns
     #   disp_id
     #   client_id
     #   account_id
-    #   type
     #   district_id
     #   birthday
     #   gender
+
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_owners = disposition.loc[disposition['type'] == 'OWNER']
+    disposition_owners = disposition_owners.drop(['type'], axis=1)
     owners = pd.merge(left=disposition_owners, right=clients, on='client_id')
     return owners
 
-def get_loan_client_owner_data():
-    # Tables: loan, account, clients, disp(owners)
+def get_loan_client_owner_data(): # Loan, Account, Clients, Disposition(owner)
     # Available Columns
     #   loan_id
     #   account_id
@@ -227,13 +226,13 @@ def get_loan_client_owner_data():
     #   date_loan
     #   disp_id
     #   client_id
-    #   type
     #   birthday
     #   gender
     #   district_id_owner
     #   frequency
     #   date_account
     #   district_id_account
+
     loan_dev, loan_comp = get_loan_data()
     account = get_account_data()
     owners = get_account_owners_data()
@@ -248,8 +247,7 @@ def get_loan_client_owner_data():
     loan_owner_comp = pd.merge(left=loan_comp, right=account_owner, on='account_id')
     return (loan_owner_dev, loan_owner_comp)
 
-def get_loan_client_owner_district_data():
-    # Tables: loan, account, clients, disp(owners), district
+def get_loan_client_owner_district_data(): # Loan, Account, Clients, Disposition(owner), District(account), District(owner)
     # Available Columns
     #   loan_id
     #   account_id
@@ -260,7 +258,6 @@ def get_loan_client_owner_district_data():
     #   status
     #   disp_id
     #   client_id
-    #   type
     #   district_id_owner
     #   birthday
     #   gender
@@ -299,7 +296,7 @@ def get_loan_client_owner_district_data():
     #   enterpreneurs_per_1000_owner
     #   crimes_95_per_1000_owner
     #   crimes_96_per_1000_owner
-    
+
     district = get_district_data()
     account_district = district.rename(columns={
         'code' : 'code_account',
@@ -347,18 +344,85 @@ def get_loan_client_owner_district_data():
 
     return (dev, comp)
 
+def get_loan_client_owner_district_and_card_data(): # Loan, Account, Clients, Disposition(owner), District(account), District(owner), Card(owner)
+    # Available Columns
+    #   loan_id
+    #   account_id
+    #   date_loan
+    #   amount
+    #   duration
+    #   payments
+    #   status
+    #   disp_id
+    #   client_id
+    #   district_id_owner
+    #   birthday
+    #   gender
+    #   district_id_account
+    #   frequency
+    #   date_account
+    #   code_account
+    #   name_account
+    #   region_account
+    #   population_account
+    #   muni_under499_account
+    #   muni_500_1999_account
+    #   muni_2000_9999_account
+    #   muni_over10000_account
+    #   n_cities_account
+    #   ratio_urban_account
+    #   avg_salary_account
+    #   unemployment_95_account
+    #   unemployment_96_account
+    #   enterpreneurs_per_1000_account
+    #   crimes_95_per_1000_account
+    #   crimes_96_per_1000_account
+    #   code_owner
+    #   name_owner
+    #   region_owner
+    #   population_owner
+    #   muni_under499_owner
+    #   muni_500_1999_owner
+    #   muni_2000_9999_owner
+    #   muni_over10000_owner
+    #   n_cities_owner
+    #   ratio_urban_owner
+    #   avg_salary_owner
+    #   unemployment_95_owner
+    #   unemployment_96_owner
+    #   enterpreneurs_per_1000_owner
+    #   crimes_95_per_1000_owner
+    #   crimes_96_per_1000_owner
+    #   card_id
+    #   type
+    #   issued
+
+    loan_owner_district_dev, loan_owner_district_comp = get_loan_client_owner_district_data()
+    card_dev, card_comp = get_card_data()
+
+    dev  = pd.merge(left=loan_owner_district_dev , right=card_dev , on='disp_id')
+    comp = pd.merge(left=loan_owner_district_comp, right=card_comp, on='disp_id')
+    
+    return (dev, comp)
+
+def get_account_disponent_data(): # Client, Disposition(disponent)
+    # Available Columns
+    #   disp_id
+    #   client_id
+    #   account_id
+    #   district_id
+    #   birthday
+    #   gender
+
+    clients = get_client_data()
+    disposition = get_disposition_data()
+    disposition_disponents = disposition.loc[disposition['type'] == 'DISPONENT']
+    disposition_disponents = disposition_disponents.drop(['type'], axis=1)
+    disponents = pd.merge(left=disposition_disponents, right=clients, on='client_id')
+    return disponents
+
 def main():
-    #with pd.option_context('display.max_columns', None):
-    #    print(get_loan_account_district_data(remove_non_numeric=True)[0].iloc[[0]])
-
-    # clients = get_client_data()
-    # print(clients.nunique())
-    # print(clients.dtypes)
-
-    # transactions = get_disposition_data()
-    # print(transactions.head())
-    # print(get_district_data().dtypes)
-    print(get_loan_client_owner_district_data()[0].dtypes)
+    print(get_disposition_data().head())
 
 if __name__ == '__main__':
     main()
