@@ -78,7 +78,7 @@ def get_account_data(): # Account (account)
     account = pd.read_csv('../data/account.csv', sep=';')
     return account
 
-def get_card_data(): # Card (card_dev, card_comp)
+def get_card_data(): # Card (card_dev + card_comp)
     # Available Columns
     #   card_id
     #   disp_id
@@ -86,9 +86,9 @@ def get_card_data(): # Card (card_dev, card_comp)
     #   issued
     dev = pd.read_csv('../data/card_train.csv', sep=';')
     competition = pd.read_csv('../data/card_test.csv', sep=';')
-    return dev, competition
+    return dev.append(competition)
 
-def get_transactions_data(): # Transactions (trans_dev, trans_comp)
+def get_transactions_data(): # Transactions (trans_dev + trans_comp)
     # Available Columns
     #   trans_id
     #   account_id
@@ -113,7 +113,7 @@ def get_transactions_data(): # Transactions (trans_dev, trans_comp)
         'account': 'Int64'
     })
     competition = pd.read_csv('../data/trans_test.csv', sep=';')
-    return dev, competition
+    return dev.append(competition)
 
 def get_birthday_from_birth_number(birth_number):
     year              = birth_number // 10000
@@ -151,6 +151,63 @@ def get_disposition_data(): # Disposition (disp)
         'type': 'category',
     })
     return disposition
+
+def modify_transactions_by_type(transactions):
+    transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'] = \
+        transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'].apply(lambda x: -x)
+    return transactions
+
+def get_mean_transaction_data(): # Transactions (mean transaction)
+    transactions = get_transactions_data()
+    transactions = transactions.drop(['trans_id', 'date', 'balance', 'account'], axis=1)
+    
+    transactions = modify_transactions_by_type(transactions)
+    transactions = transactions.groupby('account_id')['amount'].mean().rename('avg_amount').reset_index()
+
+    return transactions
+
+def get_average_daily_balance_data(): # Transactions (average daily balance)
+    transactions = get_transactions_data()
+    transactions = transactions.drop(['trans_id', 'account'], axis=1)
+
+    transactions = modify_transactions_by_type(transactions)
+    transactions['date'] = pd.to_datetime(transactions['date'].apply(get_birthday_from_birth_number))
+
+    df = pd.DataFrame()
+
+    for group in transactions.groupby('account_id'):
+        group_df = group[1]
+
+        df['account_id'] = group[0]
+
+        avg_balance = 0
+        num_days = 0
+
+        for row1, row2 in zip(group_df.iterrows(), group_df.iloc[1:].iterrows()):
+            row1 = row1[1]
+            row2 = row2[1]
+
+            interval = (row2.date - row1.date).days
+
+            avg_balance += interval * row1.balance
+            num_days += interval
+        
+        if num_days == 0:
+            df['avg_daily_balance'] = None
+        else:
+            avg_balance /= num_days
+            df['avg_daily_balance'] = avg_balance
+    
+    transactions = transactions.groupby('account_id')['balance'].mean().rename('avg_balance').reset_index()
+    
+    return transactions
+
+def get_improved_transaction_data(): # Transactions (improved)
+    # variancia? tempo passado com balance negativo (%?)
+    transactions_mean = get_mean_transaction_data()
+    transactions_daily = get_average_daily_balance_data()
+
+    return pd.merge(left=transactions_mean, right=transactions_daily, on='account_id')
 
 ### Merged Tables ###
 
@@ -398,10 +455,10 @@ def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Dis
     #   issued
 
     loan_owner_district_dev, loan_owner_district_comp = get_loan_client_owner_district_data()
-    card_dev, card_comp = get_card_data()
+    card = get_card_data()
 
-    dev  = pd.merge(left=loan_owner_district_dev , right=card_dev , on='disp_id', how='left')
-    comp = pd.merge(left=loan_owner_district_comp, right=card_comp, on='disp_id', how='left')
+    dev  = pd.merge(left=loan_owner_district_dev , right=card , on='disp_id', how='left')
+    comp = pd.merge(left=loan_owner_district_comp, right=card, on='disp_id', how='left')
     
     return (dev, comp)
 
@@ -555,16 +612,23 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
 
 # TODO
 #   mean transaction
-#   daily balance
+#   average daily balance
+#      max balance, min balance, latest balance
 #   total money that passed through the account??
 #   average salary for the owner district
 #   average salary for the the (owner + disponent) district
 #   average salary for the account district
 
 def main():
-    df = get_loan_client_data()[0]
-    print(df.dtypes)
+    df = get_improved_transaction_data()
+    print(df.head())
+    # print(df.dtypes)
+    # print(df.nunique())
     pass
 
 if __name__ == '__main__':
     main()
+
+# Normalização
+#  unemployment rate (96 em relação a 95)
+
