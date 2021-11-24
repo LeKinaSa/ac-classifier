@@ -72,6 +72,12 @@ def get_loan_account_district_data(remove_non_numeric=False):
     loan_dev, loan_competition = get_loan_data()
 
     account = pd.read_csv('../data/account.csv', sep=';')
+
+    trans_dev = pd.read_csv('../data/trans_train.csv', sep=';')
+    trans_dev = trans_dev.groupby('account_id')['trans_id'].count().rename('trans_count').reset_index()
+
+    account = pd.merge(left=account, right=trans_dev, on='account_id')
+
     district = pd.read_csv('../data/district.csv', sep=';', na_values='?')
 
     district = clean_district_data(district)
