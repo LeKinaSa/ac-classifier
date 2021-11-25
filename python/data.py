@@ -173,12 +173,14 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
     transactions = modify_transactions_by_type(transactions)
     transactions['date'] = pd.to_datetime(transactions['date'].apply(get_birthday_from_birth_number))
 
-    df = pd.DataFrame()
+    df = pd.DataFrame(columns=['account_id', 'avg_balance', 'avg_daily_balance', \
+        'balance_distribution_first_quarter', 'balance_distribution_median', 'balance_distribution_third_quarter'])
 
     for group in transactions.groupby('account_id'):
+        line = {}
         group_df = group[1]
 
-        df['account_id'] = group[0]
+        line['account_id'] = group[0]
 
         days = []
 
@@ -190,24 +192,28 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
 
             days += [row1.balance] * interval
         
+        line['avg_balance'] = group[1]['balance'].mean()
+
         if len(days) == 0:
-            df['avg_daily_balance'] = None
-            df['balance_distribution_first_quarter'] = None
-            df['balance_distribution_median']        = None
-            df['balance_distribution_third_quarter'] = None
+            line['avg_daily_balance'] = None
+            line['balance_distribution_first_quarter'] = None
+            line['balance_distribution_median']        = None
+            line['balance_distribution_third_quarter'] = None
+            line['balance_variance'] = None
         else:
-            df['avg_daily_balance'] = statistics.mean(days)
+            line['avg_daily_balance'] = statistics.mean(days)
 
             first_quarter, median, third_quarter = statistics.quantiles(days)
 
-            df['balance_distribution_first_quarter'] = first_quarter
-            df['balance_distribution_median']        = median
-            df['balance_distribution_third_quarter'] = third_quarter
+            line['balance_distribution_first_quarter'] = first_quarter
+            line['balance_distribution_median']        = median
+            line['balance_distribution_third_quarter'] = third_quarter
 
+            line['balance_variance'] = statistics.variance(days)
+
+        df = df.append(pd.Series(line), ignore_index=True)
     
-    transactions = transactions.groupby('account_id')['balance'].mean().rename('avg_balance').reset_index()
-    
-    return transactions
+    return df
 
 def get_improved_transaction_data(): # Transactions (improved)
     # variancia? tempo passado com balance negativo (%?)
