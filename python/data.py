@@ -159,7 +159,7 @@ def modify_transactions_by_type(transactions):
 
 def get_mean_transaction_data(): # Transactions (mean transaction)
     transactions = get_transactions_data()
-    transactions = transactions.drop(['trans_id', 'date', 'balance', 'account'], axis=1)
+    transactions = transactions.drop(['trans_id', 'date', 'balance', 'account', 'bank', 'k_symbol', 'operation'], axis=1)
     
     transactions = modify_transactions_by_type(transactions)
     transactions = transactions.groupby('account_id')['amount'].mean().rename('avg_amount').reset_index()
@@ -167,20 +167,28 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
     return transactions
 
 def get_average_daily_balance_data(): # Transactions (average daily balance)
+    loan_dev, loan_comp = get_loan_data()
+    loans = loan_dev.append(loan_comp)
+    loans = loans.drop(['loan_id', 'amount', 'duration', 'payments', 'status'], axis=1)
     transactions = get_transactions_data()
-    transactions = transactions.drop(['trans_id', 'account'], axis=1)
+    transactions = transactions.drop(['trans_id', 'account', 'bank', 'k_symbol', 'operation', 'amount', 'type'], axis=1)
 
-    transactions = modify_transactions_by_type(transactions)
     transactions['date'] = pd.to_datetime(transactions['date'].apply(get_birthday_from_birth_number))
+    loans['date'] = pd.to_datetime(loans['date'].apply(get_birthday_from_birth_number))
 
-    df = pd.DataFrame(columns=['account_id', 'avg_balance', 'avg_daily_balance', \
-        'balance_distribution_first_quarter', 'balance_distribution_median', 'balance_distribution_third_quarter'])
+    df = pd.DataFrame()
 
     for group in transactions.groupby('account_id'):
         line = {}
+        id = group[0]
         group_df = group[1]
 
-        line['account_id'] = group[0]
+        loan = loans.loc[loans['account_id'] == id]
+        if len(loan) == 0:
+            continue
+        loan_date = loan.iloc[0]['date']
+
+        line['account_id'] = id
 
         days = []
 
@@ -191,7 +199,11 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             interval = (row2.date - row1.date).days
 
             days += [row1.balance] * interval
-        
+            (last_transaction_date, last_transaction_balance) = (row2.date, row2.balance)
+
+        interval = (loan_date - last_transaction_date).days
+        days += [last_transaction_balance] * interval
+
         line['avg_balance'] = group[1]['balance'].mean()
 
         if len(days) == 0:
@@ -199,7 +211,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             line['balance_distribution_first_quarter'] = None
             line['balance_distribution_median']        = None
             line['balance_distribution_third_quarter'] = None
-            line['balance_variance'] = None
+            line['balance_deviation'] = None
         else:
             line['avg_daily_balance'] = statistics.mean(days)
 
@@ -209,7 +221,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             line['balance_distribution_median']        = median
             line['balance_distribution_third_quarter'] = third_quarter
 
-            line['balance_variance'] = statistics.variance(days)
+            line['balance_deviation'] = statistics.stdev(days)
 
         df = df.append(pd.Series(line), ignore_index=True)
     
@@ -634,10 +646,7 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
 
 def main():
     df = get_improved_transaction_data()
-    print(df.head())
-    # print(df.dtypes)
-    # print(df.nunique())
-    pass
+    print(df.head(3).transpose())
 
 if __name__ == '__main__':
     main()
