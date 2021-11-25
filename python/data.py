@@ -180,8 +180,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
 
         df['account_id'] = group[0]
 
-        avg_balance = 0
-        num_days = 0
+        days = []
 
         for row1, row2 in zip(group_df.iterrows(), group_df.iloc[1:].iterrows()):
             row1 = row1[1]
@@ -189,13 +188,13 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
 
             interval = (row2.date - row1.date).days
 
-            avg_balance += interval * row1.balance
-            num_days += interval
+            days += [row1.balance] * interval
         
-        if num_days == 0:
+        if len(days) == 0:
             df['avg_daily_balance'] = None
         else:
-            avg_balance /= num_days
+            avg_balance = sum(days)/len(days)
+            
             df['avg_daily_balance'] = avg_balance
     
     transactions = transactions.groupby('account_id')['balance'].mean().rename('avg_balance').reset_index()
