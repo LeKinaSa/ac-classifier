@@ -1,4 +1,4 @@
-
+import statistics
 import pandas as pd
 
 ### Base Tables ###
@@ -192,10 +192,18 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         
         if len(days) == 0:
             df['avg_daily_balance'] = None
+            df['balance_distribution_first_quarter'] = None
+            df['balance_distribution_median']        = None
+            df['balance_distribution_third_quarter'] = None
         else:
-            avg_balance = sum(days)/len(days)
-            
-            df['avg_daily_balance'] = avg_balance
+            df['avg_daily_balance'] = statistics.mean(days)
+
+            first_quarter, median, third_quarter = statistics.quantiles(days)
+
+            df['balance_distribution_first_quarter'] = first_quarter
+            df['balance_distribution_median']        = median
+            df['balance_distribution_third_quarter'] = third_quarter
+
     
     transactions = transactions.groupby('account_id')['balance'].mean().rename('avg_balance').reset_index()
     
