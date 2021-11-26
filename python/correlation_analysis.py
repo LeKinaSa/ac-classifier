@@ -22,3 +22,25 @@ def correlation_analysis(df):
                 square=True, linewidths=.5, cbar_kws={"shrink": .5})
     plt.show()
 
+# District
+d = data.get_district_data()
+correlation_analysis(d)
+
+# Loan
+d, _ = data.get_loan_data()
+correlation_analysis(d)
+
+# Loan + Transaction
+t = data.get_improved_transaction_data()
+d = pd.merge(left=d, right=t, on='account_id')
+correlation_analysis(d) # This one is a little slower to show but it has very interesting results
+
+# All
+# d, _ = data.get_processed_data()
+# correlation_analysis(d) # This one is too big and it is not good for analyzing
+
+# All Processed
+d, _ = data.get_data()
+correlation_analysis(d)
+
+# TODO: all data with different types of processing in the data
