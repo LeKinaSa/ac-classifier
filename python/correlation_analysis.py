@@ -14,11 +14,14 @@ def correlation_analysis(df):
     # Generate a mask for the upper triangle
     mask = np.triu(np.ones_like(corr, dtype=bool))
 
+    # Set up the matplotlib figure
+    plt.subplots(figsize=(11, 9))
+    
     # Generate a custom diverging colormap
     cmap = sb.diverging_palette(230, 20, as_cmap=True)
 
     # Draw the heatmap with the mask and correct aspect ratio
-    sb.heatmap(corr, mask=mask, cmap=cmap, vmax=.3, center=0,
+    sb.heatmap(corr, mask=mask, cmap=cmap, center=0,
                 square=True, linewidths=.5, cbar_kws={"shrink": .5})
     plt.show()
 
