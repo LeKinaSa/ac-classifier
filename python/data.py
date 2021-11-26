@@ -274,58 +274,6 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
     return (dev, comp)
 
 def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
-    # Available Columns
-    #   loan_id
-    #   account_id
-    #   date_loan
-    #   amount
-    #   duration
-    #   payments
-    #   status
-    #   disp_id
-    #   client_id
-    #   district_id_owner
-    #   birthday
-    #   gender
-    #   district_id_account
-    #   frequency
-    #   date_account
-    #   code_account
-    #   name_account
-    #   region_account
-    #   population_account
-    #   muni_under499_account
-    #   muni_500_1999_account
-    #   muni_2000_9999_account
-    #   muni_over10000_account
-    #   n_cities_account
-    #   ratio_urban_account
-    #   avg_salary_account
-    #   unemployment_95_account
-    #   unemployment_96_account
-    #   enterpreneurs_per_1000_account
-    #   crimes_95_per_1000_account
-    #   crimes_96_per_1000_account
-    #   code_owner
-    #   name_owner
-    #   region_owner
-    #   population_owner
-    #   muni_under499_owner
-    #   muni_500_1999_owner
-    #   muni_2000_9999_owner
-    #   muni_over10000_owner
-    #   n_cities_owner
-    #   ratio_urban_owner
-    #   avg_salary_owner
-    #   unemployment_95_owner
-    #   unemployment_96_owner
-    #   enterpreneurs_per_1000_owner
-    #   crimes_95_per_1000_owner
-    #   crimes_96_per_1000_owner
-    #   card_id
-    #   type
-    #   issued
-
     loan_owner_district_dev, loan_owner_district_comp = get_loan_client_owner_district_data()
     card = get_card_data()
 
@@ -335,14 +283,6 @@ def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Dis
     return (dev, comp)
 
 def get_account_disponent_data(): # Client, Disposition(disponent)
-    # Available Columns
-    #   disp_id
-    #   client_id
-    #   account_id
-    #   district_id
-    #   birthday
-    #   gender
-
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_disponents = disposition.loc[disposition['type'] == 'DISPONENT']
@@ -351,107 +291,12 @@ def get_account_disponent_data(): # Client, Disposition(disponent)
     return disponents
 
 def get_account_disponent_district_data(): # Client, Disposition(disponent), District(disponent)
-    # Available Columns
-    #   disp_id
-    #   client_id
-    #   account_id
-    #   district_id
-    #   birthday
-    #   gender
-    #   code
-    #   name
-    #   region
-    #   population
-    #   muni_under499
-    #   muni_500_1999
-    #   muni_2000_9999
-    #   muni_over10000
-    #   n_cities
-    #   ratio_urban
-    #   avg_salary
-    #   unemployment_95
-    #   unemployment_96
-    #   enterpreneurs_per_1000
-    #   crimes_95_per_1000
-    #   crimes_96_per_1000
     disponent = get_account_disponent_data()
     district = get_district_data()
     disponent_district = pd.merge(left=disponent, right=district, left_on='district_id', right_on='code', how='left')
     return disponent_district
 
 def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
-    # Available Columns
-    #   loan_id
-    #   account_id
-    #   date_loan
-    #   amount
-    #   duration
-    #   payments
-    #   status
-    #   disp_id
-    #   client_id_owner
-    #   district_id_owner
-    #   birthday_owner
-    #   gender_owner
-    #   district_id_account
-    #   frequency
-    #   date_account
-    #   code_account
-    #   name_account
-    #   region_account
-    #   population_account
-    #   muni_under499_account
-    #   muni_500_1999_account
-    #   muni_2000_9999_account
-    #   muni_over10000_account
-    #   n_cities_account
-    #   ratio_urban_account
-    #   avg_salary_account
-    #   unemployment_95_account
-    #   unemployment_96_account
-    #   enterpreneurs_per_1000_account
-    #   crimes_95_per_1000_account
-    #   crimes_96_per_1000_account
-    #   code_owner
-    #   name_owner
-    #   region_owner
-    #   population_owner
-    #   muni_under499_owner
-    #   muni_500_1999_owner
-    #   muni_2000_9999_owner
-    #   muni_over10000_owner
-    #   n_cities_owner
-    #   ratio_urban_owner
-    #   avg_salary_owner
-    #   unemployment_95_owner
-    #   unemployment_96_owner
-    #   enterpreneurs_per_1000_owner
-    #   crimes_95_per_1000_owner
-    #   crimes_96_per_1000_owner
-    #   card_id
-    #   type
-    #   issued
-    #   client_id_disponent
-    #   district_id_disponent
-    #   birthday_disponent
-    #   gender_disponent
-    #   code_disponent
-    #   name_disponent
-    #   region_disponent
-    #   population_disponent
-    #   muni_under499_disponent
-    #   muni_500_1999_disponent
-    #   muni_2000_9999_disponent
-    #   muni_over10000_disponent
-    #   n_cities_disponent
-    #   ratio_urban_disponent
-    #   avg_salary_disponent
-    #   unemployment_95_disponent
-    #   unemployment_96_disponent
-    #   enterpreneurs_per_1000_disponent
-    #   crimes_95_per_1000_disponent
-    #   crimes_96_per_1000_disponent
-
     loan_dev, loan_comp = get_loan_client_owner_district_and_card_data()
     disponent = get_account_disponent_district_data()
     
@@ -515,18 +360,6 @@ def get_processed_data():
     d = pd.read_csv('../data/processed/dev.csv')
     c = pd.read_csv('../data/processed/comp.csv')
     
-    # Drop ids and disctrict codes
-    d = d.drop([
-        'loan_id', 'account_id', 'client_id_owner', 'client_id_disponent',
-        'district_id_account', 'district_id_owner', 'district_id_disponent',
-        'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
-    ], axis=1)
-    c = c.drop([
-        'loan_id', 'account_id', 'client_id_owner', 'client_id_disponent',
-        'district_id_account', 'district_id_owner', 'district_id_disponent',
-        'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
-    ], axis=1)
-
     return (d, c)
 
 def normalize(df, columns, normalizer):
@@ -552,6 +385,13 @@ def get_data():
 def process_data(d):
     ### Here are some ideas of what could be done
 
+    # Drop ids and disctrict codes
+    d = d.drop([
+        'loan_id', 'account_id', 'client_id_owner', 'client_id_disponent',
+        'district_id_account', 'district_id_owner', 'district_id_disponent',
+        'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
+    ], axis=1)
+    
     # The loan amount is redundant (since we have the number and value of payments: duration, payments)
     d = d.drop('amount', axis=1)
 
