@@ -1,3 +1,5 @@
+
+import os
 import statistics
 import pandas as pd
 
@@ -351,14 +353,21 @@ def get_all_data():
 
 def save_all_data():
     d, c = get_all_data()
+    os.makedirs('../data/processed/', exist_ok=True)
     d.to_csv('../data/processed/dev.csv')
     c.to_csv('../data/processed/comp.csv')
 
 ### Using the Data Saved ###
 
 def get_processed_data():
-    d = pd.read_csv('../data/processed/dev.csv')
-    c = pd.read_csv('../data/processed/comp.csv')
+    dev_file  = '../data/processed/dev.csv'
+    comp_file = '../data/processed/comp.csv'
+
+    if not os.path.exists(dev_file) or not os.path.exists(comp_file):
+        save_all_data()
+    
+    d = pd.read_csv(dev_file)
+    c = pd.read_csv(comp_file)
     
     return (d, c)
 
@@ -377,10 +386,6 @@ def get_ages(df, creation_dates, loan_date):
         df[creation_date] = df[creation_date].rsub(df[loan_date])
         df[creation_date] = df[creation_date].floordiv(10000)
     return df
-
-def get_data():
-    (d, c) = get_processed_data()
-    return (process_data(d), process_data(c))
 
 def process_data(d):
     ### Here are some ideas of what could be done
@@ -467,6 +472,10 @@ def process_data(d):
     # TODO
 
     return d
+
+def get_data():
+    (d, c) = get_processed_data()
+    return (process_data(d), process_data(c))
 
 def main():
     d, c = get_data()
