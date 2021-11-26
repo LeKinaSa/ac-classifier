@@ -354,8 +354,8 @@ def get_all_data():
 def save_all_data():
     d, c = get_all_data()
     os.makedirs('../data/processed/', exist_ok=True)
-    d.to_csv('../data/processed/dev.csv')
-    c.to_csv('../data/processed/comp.csv')
+    d.to_csv('../data/processed/dev.csv', index=False)
+    c.to_csv('../data/processed/comp.csv', index=False)
 
 ### Using the Data Saved ###
 
@@ -446,6 +446,9 @@ def process_data(d):
     # Since the date_loan was used to normalize the dates, it is no longer needed
     d = d.drop('date_loan', axis=1)
     
+    # Theory: ages are not normalized so maybe they can be a problem (?)
+    d = d.drop(['age_card', 'age_account', 'age_owner'], axis=1)
+
     # Theory: The disponent doesn't affect the payment of the loan
     d = d.drop([
         'age_disponent', 'gender_disponent', 'name_disponent', 'region_disponent',
@@ -456,9 +459,6 @@ def process_data(d):
         'crimes_95_per_1000_disponent', 'crimes_evolution_disponent'
     ], axis=1)
     
-    # Theory: ages are not normalized so maybe they can be a problem (?)
-    d = d.drop(['age_card', 'age_account', 'age_owner'], axis=1)
-
     # Theory: Only 1 district will affect the loan (owner or account? - for now, we are gonna go with account) - maybe do a combination of both?
     d = d.drop([
         'name_owner', 'region_owner', 'population_owner', 'muni_under499_owner',
