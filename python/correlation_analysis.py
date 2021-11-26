@@ -44,6 +44,9 @@ correlation_analysis(d) # This one is a little slower to show but it has very in
 
 # All Processed
 d, _ = data.get_data()
+d.drop('loan_id', axis=1)
 correlation_analysis(d)
 
 # TODO: all data with different types of processing in the data
+
+# TODO: test algorithms without random division -> dividing the dev loans by date? - dont use this for submissions

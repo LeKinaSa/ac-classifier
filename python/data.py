@@ -390,9 +390,9 @@ def get_ages(df, creation_dates, loan_date):
 def process_data(d):
     ### Here are some ideas of what could be done
 
-    # Drop ids and disctrict codes
+    # Drop ids and disctrict codes (don't drop 'loan_id')
     d = d.drop([
-        'loan_id', 'account_id', 'client_id_owner', 'client_id_disponent',
+        'account_id', 'client_id_owner', 'client_id_disponent',
         'district_id_account', 'district_id_owner', 'district_id_disponent',
         'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
     ], axis=1)
