@@ -1,6 +1,5 @@
 
-from data import get_loan_account_district_data
-
+import data, correlation_analysis
 import os
 import numpy as np
 import pandas as pd
@@ -21,14 +20,7 @@ def save_submission(competition, y):
     os.makedirs('../data/submissions/', exist_ok=True)
     submission.to_csv('../data/submissions/simple.csv', index=False)
 
-def model_learning_and_classification(estimator, param_grid={}):
-    dev, competition = get_loan_account_district_data(remove_non_numeric=True)
-
-    to_drop = ['account_id', 'district_id', 'code', 'date_x', 'date_y', 'payments']
-
-    dev         =         dev.drop(to_drop, axis=1)
-    competition = competition.drop(to_drop, axis=1)
-
+def model_learning_and_classification(dev, competition, estimator, param_grid={}):
     X, y = dev.loc[:, ~dev.columns.isin(['loan_id', 'status'])], dev.loc[:, 'status']
 
     cv = StratifiedKFold()
@@ -44,14 +36,44 @@ def model_learning_and_classification(estimator, param_grid={}):
 
     return ((auc, best_params), (competition, y))
 
+def convert_gender(x):
+    return 1 if x == 'Female' else 0
+def convert_card_type(card):
+    if card == 'junior':
+        return 1
+    elif card == 'classic':
+        return 2
+    elif card == 'gold':
+        return 3
+    return 0
+
 def main():
+    # Data
+    dev, competition = data.get_data()
+    
+    dev        ['gender_owner'] = dev        ['gender_owner'].apply(convert_gender)
+    competition['gender_owner'] = competition['gender_owner'].apply(convert_gender)
+    dev        ['type'] = dev        ['type'].apply(convert_card_type)
+    competition['type'] = competition['type'].apply(convert_card_type)
+
+    to_drop = [
+        'name_account', 'region_account', 'muni_over10000_account', 'n_cities_account', 'avg_salary_account', 'frequency',
+        'balance_distribution_median', 'balance_distribution_third_quarter', 'avg_daily_balance', 'avg_balance', 'avg_amount'
+    ]
+
+    dev         =         dev.drop(to_drop, axis=1)
+    competition = competition.drop(to_drop, axis=1)
+
+    # correlation_analysis.correlation_analysis(dev, True)
+
+    # Classifiers
     classifiers = {
         'DTC' : (
             DecisionTreeClassifier(),
             {
                 'criterion': ['gini', 'entropy'],
                 'max_depth': [3, 5, 10, None],
-                'class_weight': [None, 'balanced']
+                'class_weight': [None, 'balanced'],
             }
         ),
         'RFC' : (
@@ -59,7 +81,7 @@ def main():
             {
                 'n_estimators': [50, 100, 150],
                 'criterion': ['gini', 'entropy'],
-                'class_weight': ['balanced', 'balanced_subsample', None]
+                'class_weight': ['balanced', 'balanced_subsample', None],
             }
         ),
         'KNC' : (
@@ -74,7 +96,7 @@ def main():
         'SVC' : (
             SVC(),
             {
-                'probability': [True]
+                'probability': [True],
             }
         ),
         'ABC' : (
@@ -87,39 +109,39 @@ def main():
                     # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
                     SVC(probability=True),
                     GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
-                    LogisticRegression()
+                    #LogisticRegression(),
                 ],
-                'n_estimators': [25, 50, 75]
+                #'n_estimators': [25, 50, 75]
             }
         ),
         'GBC' : (
             GradientBoostingClassifier(),
             {
-                'loss': ['deviance', 'exponential'],
-                'criterion': ['friedman_mse', 'squared_error'],
-                'max_depth': [2, 3, 4, 5],
-                'max_features': ['sqrt', 'log2', None]
+                # 'loss': ['deviance', 'exponential'],
+                # 'criterion': ['friedman_mse', 'squared_error'],
+                # 'max_depth': [2, 3, 4, 5],
+                # 'max_features': ['sqrt', 'log2', None],
             }
         ),
         'LGR': (
             LogisticRegression(),
             {
                 'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
-                'class_weight': [None, ],
+                'class_weight': [None, 'balanced'],
                 'max_iter': [50, 100, 150, 250, 500], 
-                'n_jobs': [None, 1, 2, 3],           
+                # 'n_jobs': [None, 1, 2, 3],           
             }
         ),
-        'StC' : (
-            StackingClassifier(
-                estimators=[
-                    RandomForestClassifier(n_estimators=10, random_state=42),
-                    KNeighborsClassifier()
-                ],
-                final_estimator=LogisticRegression()
-            ),
-            {}
-        ),
+        # 'StC' : (
+        #     StackingClassifier(
+        #         estimators=[
+        #             RandomForestClassifier(n_estimators=10, random_state=42),
+        #             KNeighborsClassifier(),
+        #         ],
+        #         final_estimator=LogisticRegression()
+        #     ),
+        #     {}
+        # ),
     }
 
     best_results = (None, None)
@@ -128,7 +150,7 @@ def main():
     for classifier in classifiers:
         print(f'Classifier: {classifier}')
         (estimator, param_grid) = classifiers[classifier]
-        (scores, results) = model_learning_and_classification(estimator, param_grid)
+        (scores, results) = model_learning_and_classification(dev, competition, estimator, param_grid)
         
         (auc, best_params) = scores
         print(f'AUC score: {auc}')
