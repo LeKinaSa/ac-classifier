@@ -394,6 +394,18 @@ def get_ages(df, creation_dates, loan_date):
         df[creation_date] = df[creation_date].floordiv(10000)
     return df
 
+def normalize_district(df, muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities):
+    # Obtain total municipalities
+    df['total_muni'] = 0
+    for column in [muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000]:
+        df['total_muni'] = df['total_muni'].add(df[column])
+    
+    # Normalize municipalities
+    for column in [muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities]:
+        df[column] = df[column].divide(df['total_muni'])
+
+    return df.drop('total_muni', axis=1)
+
 def process_data(d):
     ### Here are some ideas of what could be done
 
@@ -412,7 +424,7 @@ def process_data(d):
         'avg_amount', 'avg_balance',
         'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
         'balance_distribution_median', 'balance_distribution_third_quarter'
-    ], 'payments') # TODO: this variables (except maybe 'avg_amount') are probably correlated: check with graphs
+    ], 'payments')
 
     # Use the payment to normalize salaries
     d = normalize(d, ['avg_salary_account', 'avg_salary_owner', 'avg_salary_disponent'], 'payments')
@@ -454,29 +466,42 @@ def process_data(d):
     d = d.drop('date_loan', axis=1)
     
     # Theory: ages are not normalized so maybe they can be a problem (?)
-    d = d.drop(['age_card', 'age_account', 'age_owner'], axis=1)
+    d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
+    
+    # Theory: number of transactions is not normalized so maybe it can be a problem (?)
+    d = d.drop('n_transactions', axis=1)
 
-    # Theory: The disponent doesn't affect the payment of the loan
+    # Theory: The disponent doesn't affect the status of the loan
+    d = d.drop('gender_disponent', axis=1)
+
+    # Theory: The gender doesn't affect the status of the loan
+    d = d.drop('gender_owner', axis=1)
+
+    # Theory: Only 1 district will affect the loan
     d = d.drop([
-        'age_disponent', 'gender_disponent', 'name_disponent', 'region_disponent',
-        'population_disponent', 'muni_under499_disponent', 'muni_500_1999_disponent',
-        'muni_2000_9999_disponent', 'muni_over10000_disponent', 'n_cities_disponent',
-        'ratio_urban_disponent', 'avg_salary_disponent', 'unemployment_95_disponent',
+        'name_disponent', 'region_disponent', 'population_disponent',
+        'muni_under499_disponent', 'muni_500_1999_disponent',
+        'muni_2000_9999_disponent', 'muni_over10000_disponent',
+        'n_cities_disponent', 'ratio_urban_disponent',
+        'avg_salary_disponent', 'unemployment_95_disponent',
         'unemployment_evolution_disponent', 'enterpreneurs_per_1000_disponent',
         'crimes_95_per_1000_disponent', 'crimes_evolution_disponent'
     ], axis=1)
-    
-    # Theory: Only 1 district will affect the loan (owner or account? - for now, we are gonna go with account) - maybe do a combination of both?
     d = d.drop([
-        'name_owner', 'region_owner', 'population_owner', 'muni_under499_owner',
-        'muni_500_1999_owner', 'muni_2000_9999_owner', 'muni_over10000_owner',
-        'n_cities_owner', 'ratio_urban_owner', 'avg_salary_owner',
-        'unemployment_95_owner', 'unemployment_evolution_owner', 'enterpreneurs_per_1000_owner',
+        'name_owner', 'region_owner', 'population_owner',
+        'muni_under499_owner', 'muni_500_1999_owner',
+        'muni_2000_9999_owner', 'muni_over10000_owner', 'n_cities_owner',
+        'ratio_urban_owner', 'avg_salary_owner', 'unemployment_95_owner',
+        'unemployment_evolution_owner', 'enterpreneurs_per_1000_owner',
         'crimes_95_per_1000_owner', 'crimes_evolution_owner'
     ], axis=1)
 
-    # Normalize district (account_district)
-    # TODO
+    # Normalize district
+    d = normalize_district(d, 'muni_under499_account', 'muni_500_1999_account',
+            'muni_2000_9999_account', 'muni_over10000_account', 'n_cities_account')
+
+    # Population is a big number with no normalization, is it a problem?
+    d = d.drop('population_account', axis=1)
 
     return d
 
@@ -497,9 +522,9 @@ def main():
     #     'crimes_95_per_1000_account', 'crimes_evolution_account', 'type'
     # ], axis=1)
 
-    #print(d.head(5).transpose())
-    print(d.dtypes)
-    #print(len(d.dtypes))
+    # print(d.head(2).transpose())
+    # print(d.dtypes)
+    print(len(d.dtypes))
     print(len(c.dtypes))
 
 
