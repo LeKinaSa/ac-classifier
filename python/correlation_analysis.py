@@ -25,39 +25,42 @@ def correlation_analysis(df, annot=False, title='Correlation Graph'):
                 square=True, linewidths=.5, cbar_kws={"shrink": .5}).set(title=title)
     plt.show()
 
-#### District
-d = data.get_district_data()
-correlation_analysis(d)
+def main():
+    #### District
+    d = data.get_district_data()
+    correlation_analysis(d)
 
-#### Loan
-d, _ = data.get_loan_data()
-correlation_analysis(d)
+    #### Loan
+    d, _ = data.get_loan_data()
+    correlation_analysis(d)
 
-#### Loan + Transaction
-t = data.get_improved_transaction_data()
-d = pd.merge(left=d, right=t, on='account_id')
-correlation_analysis(d) # This one is a little slower to show but it has very interesting results
+    #### Loan + Transaction
+    t = data.get_improved_transaction_data()
+    d = pd.merge(left=d, right=t, on='account_id')
+    correlation_analysis(d) # This one is a little slower to show but it has very interesting results
 
-#### All
-# d, _ = data.get_processed_data()
-# correlation_analysis(d) # This one is too big and it is not good for analyzing
+    #### All
+    # d, _ = data.get_processed_data()
+    # correlation_analysis(d) # This one is too big and it is not good for analyzing
 
-#### All Processed (Default Processing)
-d, _ = data.get_data()
-d = d.drop('loan_id', axis=1)
-correlation_analysis(d)
-correlation_analysis(d, True)
+    #### All Processed (Default Processing)
+    d, _ = data.get_data()
+    d = d.drop('loan_id', axis=1)
+    correlation_analysis(d)
+    correlation_analysis(d, True)
 
-#### All Processed (Default Processing) - Analyzing Correlations By Loan Status
-d, _ = data.get_data()
-d = d.drop('loan_id', axis=1)
-correlation_analysis(d.drop('status', axis=1), True)
-p = d.loc[d['status'] == 0].drop('status', axis=1)
-n = d.loc[d['status'] == 1].drop('status', axis=1)
-correlation_analysis(p, True, 'Correlation Graph (paid loans)')
-correlation_analysis(n, True, 'Correlation Graph (non paid loans)')
+    #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
+    d, _ = data.get_data()
+    d = d.drop('loan_id', axis=1)
+    correlation_analysis(d.drop('status', axis=1), True)
+    p = d.loc[d['status'] == 0].drop('status', axis=1)
+    n = d.loc[d['status'] == 1].drop('status', axis=1)
+    correlation_analysis(p, True, 'Correlation Graph (paid loans)')
+    correlation_analysis(n, True, 'Correlation Graph (non paid loans)')
 
+    # TODO: all data with different types of processing in the data
 
-# TODO: all data with different types of processing in the data
+    # TODO: test algorithms without random division -> dividing the dev loans by date? - dont use this for submissions
 
-# TODO: test algorithms without random division -> dividing the dev loans by date? - dont use this for submissions
+if __name__ == '__main__':
+    main()

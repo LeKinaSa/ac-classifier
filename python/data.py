@@ -475,7 +475,7 @@ def process_data(d):
     d = d.drop('gender_disponent', axis=1)
 
     # Theory: The gender doesn't affect the status of the loan
-    d = d.drop('gender_owner', axis=1)
+    # d = d.drop('gender_owner', axis=1)
 
     # Theory: Only 1 district will affect the loan
     d = d.drop([
@@ -523,9 +523,9 @@ def main():
     # ], axis=1)
 
     # print(d.head(2).transpose())
-    # print(d.dtypes)
+    print(d.dtypes)
     print(len(d.dtypes))
-    print(len(c.dtypes))
+    # print(len(c.dtypes))
 
 
 if __name__ == '__main__':
