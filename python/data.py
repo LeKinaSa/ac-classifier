@@ -179,11 +179,18 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
     
     return df
 
+def get_number_of_transactions_data(): # Transactions (number of transactions)
+    transactions = get_transactions_data()
+    transactions = transactions.groupby('account_id')['trans_id'].count().rename('n_transactions').reset_index()
+    return transactions
+
 def get_improved_transaction_data(): # Transactions (improved)
     transactions_mean = get_mean_transaction_data()
     transactions_daily = get_average_daily_balance_data()
+    n_transactions = get_number_of_transactions_data()
 
-    return pd.merge(left=transactions_mean, right=transactions_daily, on='account_id')
+    transactions_info = pd.merge(left=transactions_mean, right=n_transactions, on='account_id')
+    return pd.merge(left=transactions_daily, right=transactions_info, on='account_id')
 
 ### Merged Tables ###
 
@@ -478,6 +485,7 @@ def get_data():
     return (process_data(d), process_data(c))
 
 def main():
+    # save_all_data()
     d, c = get_data()
     # d = d.drop(['avg_amount', 'avg_balance',
     #     'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
