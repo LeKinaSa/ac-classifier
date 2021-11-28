@@ -113,10 +113,12 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
     transactions = get_transactions_data()
     transactions = transactions.drop(['trans_id', 'date', 'balance', 'account', 'bank', 'k_symbol', 'operation'], axis=1)
     
+    t = transactions.groupby('account_id')['amount'].mean().rename('avg_abs_amount').reset_index()
+
     transactions = modify_transactions_by_type(transactions)
     transactions = transactions.groupby('account_id')['amount'].mean().rename('avg_amount').reset_index()
 
-    return transactions
+    return pd.merge(left=transactions, right=t, on='account_id')
 
 def get_average_daily_balance_data(): # Transactions (average daily balance)
     loan_dev, loan_comp = get_loan_data()
