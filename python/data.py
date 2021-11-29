@@ -123,7 +123,7 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
 def get_average_daily_balance_data(): # Transactions (average daily balance)
     loan_dev, loan_comp = get_loan_data()
     loans = loan_dev.append(loan_comp)
-    loans = loans.drop(['loan_id', 'amount', 'duration', 'payments', 'status'], axis=1)
+    loans = loans.drop(['loan_id', 'amount', 'duration', 'status'], axis=1)
     transactions = get_transactions_data()
     transactions = transactions.drop(['trans_id', 'account', 'bank', 'k_symbol', 'operation', 'amount', 'type'], axis=1)
 
@@ -141,6 +141,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         if len(loan) == 0:
             continue
         loan_date = loan.iloc[0]['date']
+        loan_payments = loan.iloc[0]['payments']
 
         line['account_id'] = id
 
@@ -161,12 +162,32 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         line['avg_balance'] = group[1]['balance'].mean()
 
         if len(days) == 0:
+            line['negative_balance'] = None
+            line['high_balance'] = None
+            line['last_neg'] = None
+            line['last_high'] = None
             line['avg_daily_balance'] = None
             line['balance_distribution_first_quarter'] = None
             line['balance_distribution_median']        = None
             line['balance_distribution_third_quarter'] = None
             line['balance_deviation'] = None
         else:
+            line['negative_balance'] = len(list(filter(lambda x: x < 0, days))) / len(days)
+            line['high_balance'] = len(list(filter(lambda x: x < loan_payments, days))) / len(days)
+            
+            for index in range(len(days) - 1, -1, -1):
+                if days[index] < 0:
+                    line['last_neg'] = (len(days) - index) / len(days)
+                    break
+            else:
+                line['last_neg'] = 1
+            for index in range(len(days) - 1, -1, -1):
+                if days[index] > loan_payments:
+                    line['last_high'] = (len(days) - index) / len(days)
+                    break
+            else:
+                line['last_high'] = 1
+            
             line['avg_daily_balance'] = statistics.mean(days)
 
             first_quarter, median, third_quarter = statistics.quantiles(days)

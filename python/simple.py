@@ -39,12 +39,8 @@ def model_learning_and_classification(dev, competition, estimator, param_grid={}
 def convert_gender(x):
     return 1 if x == 'Female' else 0
 def convert_card_type(card):
-    if card == 'junior':
+    if card == 'junior' or card == 'classic' or card == 'gold':
         return 1
-    elif card == 'classic':
-        return 2
-    elif card == 'gold':
-        return 3
     return 0
 
 def main():
@@ -57,15 +53,30 @@ def main():
     competition['type'] = competition['type'].apply(convert_card_type)
 
     to_drop = [
-        'name_account', 'region_account', 'muni_over10000_account', 'n_cities_account', 'avg_salary_account', 'frequency',
-        'balance_distribution_median', 'balance_distribution_third_quarter', 'avg_daily_balance', 'avg_balance', 'avg_amount'
+        'name_account', 'region_account', 'n_cities_account', 'avg_salary_account', 'frequency',
+        'balance_distribution_first_quarter', 'balance_distribution_third_quarter',
+        'avg_daily_balance', 'avg_balance',
+        'avg_amount', 'avg_abs_amount',
+        'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account', 'muni_over10000_account',
+        'ratio_urban_account',
+        'balance_deviation',
+        'unemployment_95_account',
+        'unemployment_evolution_account',
+        'crimes_95_per_1000_account',
+        'crimes_evolution_account',
+        #'enterpreneurs_per_1000_account',
+        'last_high',
+        'last_neg',
+        # 'negative_balance',
+        # 'high_balance',
     ]
+
 
     dev         =         dev.drop(to_drop, axis=1)
     competition = competition.drop(to_drop, axis=1)
 
     # correlation_analysis.correlation_analysis(dev, True)
-
+    
     # Classifiers
     classifiers = {
         'DTC' : (
@@ -99,39 +110,39 @@ def main():
                 'probability': [True],
             }
         ),
-        'ABC' : (
-            AdaBoostClassifier(),
-            {
-                'algorithm': ['SAMME', 'SAMME.R'],
-                'base_estimator': [
-                    DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
-                    RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
-                    # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
-                    SVC(probability=True),
-                    GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
-                    #LogisticRegression(),
-                ],
-                #'n_estimators': [25, 50, 75]
-            }
-        ),
-        'GBC' : (
-            GradientBoostingClassifier(),
-            {
-                # 'loss': ['deviance', 'exponential'],
-                # 'criterion': ['friedman_mse', 'squared_error'],
-                # 'max_depth': [2, 3, 4, 5],
-                # 'max_features': ['sqrt', 'log2', None],
-            }
-        ),
-        'LGR': (
-            LogisticRegression(),
-            {
-                'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
-                'class_weight': [None, 'balanced'],
-                'max_iter': [50, 100, 150, 250, 500], 
-                # 'n_jobs': [None, 1, 2, 3],           
-            }
-        ),
+        # 'ABC' : (
+        #     AdaBoostClassifier(),
+        #     {
+        #         'algorithm': ['SAMME', 'SAMME.R'],
+        #         'base_estimator': [
+        #             DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
+        #             RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
+        #             # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
+        #             # SVC(probability=True),
+        #             GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
+        #             #LogisticRegression(),
+        #         ],
+        #         #'n_estimators': [25, 50, 75]
+        #     }
+        # ),
+        # 'GBC' : (
+        #     GradientBoostingClassifier(),
+        #     {
+        #         # 'loss': ['deviance', 'exponential'],
+        #         # 'criterion': ['friedman_mse', 'squared_error'],
+        #         # 'max_depth': [2, 3, 4, 5],
+        #         # 'max_features': ['sqrt', 'log2', None],
+        #     }
+        # ),
+        # 'LGR': (
+        #     LogisticRegression(),
+        #     {
+        #         'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
+        #         'class_weight': [None, 'balanced'],
+        #         'max_iter': [50, 100, 150, 250, 500], 
+        #         # 'n_jobs': [None, 1, 2, 3],           
+        #     }
+        # ),
         # 'StC' : (
         #     StackingClassifier(
         #         estimators=[
