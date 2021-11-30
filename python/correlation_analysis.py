@@ -3,15 +3,23 @@ import numpy as np
 import seaborn as sb
 import pandas as pd
 import matplotlib.pyplot as plt
+from itertools import combinations
 import data
 
-# Global Variables for showing only some graphs
-district            = False
-loan                = False
-loan_and_trans      = False
-all                 = False
-analyze_by_status   = False
-all_with_processing = False
+####################################################################################################
+####################        Global Variables for showing only some graphs       ####################
+# Correlation Graphs
+district             = False
+loan                 = False
+loan_and_trans       = False
+all_corr             = False
+analyze_by_status    = False
+all_with_processing  = False
+parts                = False
+# All Possible Scatter and Count Plots
+all_possible_scatter = False
+all_possible_count   = False
+####################################################################################################
 
 def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation Graph'):
     sb.set_theme(style="white")
@@ -48,26 +56,34 @@ def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
     
     correlation_analysis(c, annot, decimal_places, 'Correlation Graph (competition data)')
 
+def scatter_plot(d, x, y):
+    sb.scatterplot(data=d, x=x, y=y, hue='status')
+    plt.show()
+
+def count_plot(d, x):
+    sb.histplot(data=d, x=x, hue='status', multiple='fill')
+    plt.show()
+
 def main():
-    #### District
+    #### District (Correlation)
     if district:
         d = data.get_district_data()
         correlation_analysis(d)
 
-    #### Loan
+    #### Loan (Correlation)
     if loan:
         d, _ = data.get_loan_data()
         correlation_analysis(d)
 
-    #### Loan + Transaction
+    #### Loan + Transaction (Correlation)
     if loan_and_trans:
         d, _ = data.get_loan_data()
         t = data.get_improved_transaction_data()
         d = pd.merge(left=d, right=t, on='account_id')
         correlation_analysis(d) # This one is a little slower to show but it has very interesting results
 
-    #### All
-    if all:
+    #### All (Correlation)
+    if all_corr:
         d, _ = data.get_processed_data()
         correlation_analysis(d) # This one is too big and it is not good for analyzing
 
@@ -76,7 +92,7 @@ def main():
         d, c = data.get_data()
         correlation_analysis_by_status(d, c, True, 1)
 
-    ### All with Some Processing
+    #### All with Some Processing (Correlation)
     if all_with_processing:
         d, _ = data.get_processed_data()
         
@@ -131,10 +147,39 @@ def main():
             'n_transactions'
         ], axis=1)
         correlation_analysis(d, True, 3)
+    
+    #### All in Parts (Correlation)
+    if parts:
+        d, _ = data.get_data()
+        d = d.drop(['loan_id'], axis=1)
+        columns = list(d.drop('status', axis=1).columns)
+        for i in range(0, len(columns), 5):
+            to_show = columns[i:i+5]
+            s = data.select(d, to_show)
+            correlation_analysis(s, True)
 
-    # TODO: all data with different types of processing in the data
-
-    # TODO: test algorithms without random division -> dividing the dev loans by date? - dont use this for submissions
+    #### All possible scatter plots
+    if all_possible_scatter:
+        d, _ = data.get_processed_data()
+        # d, _ = data.get_data()
+        columns = d.drop(['loan_id', 'status'], axis=1).columns
+        n = len(list(combinations(columns, 2)))
+        answer = input(f'Show all possible scatter plots ({n}) [y/N]? ').lower()
+        if answer == 'y' or answer == 'yes':
+            for x, y in combinations(columns, 2):
+                scatter_plot(d, x, y)
+    
+    #### All possible count plots
+    if all_possible_count:
+        d, _ = data.get_processed_data()
+        # d, _ = data.get_data()
+        columns = d.drop(['loan_id', 'status'], axis=1).columns
+        n = len(columns)
+        answer = input(f'Show all possible count plots ({n}) [y/N]? ').lower()
+        if answer == 'y' or answer == 'yes':
+            for x in columns:
+                count_plot(d, x)
+    
     return
 
 if __name__ == '__main__':
