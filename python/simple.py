@@ -61,7 +61,7 @@ def main():
     dev         =         dev.drop(to_drop, axis=1)
     competition = competition.drop(to_drop, axis=1)
 
-    # correlation_analysis.correlation_analysis(dev, True)
+    # correlation_analysis.correlation_analysis_by_status(dev, competition, True, 5)
     
     # Classifiers
     classifiers = {
