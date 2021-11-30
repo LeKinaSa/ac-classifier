@@ -429,6 +429,26 @@ def normalize_district(df, muni_under_499, muni_500_1999, muni_2000_9999, muni_o
 
     return df.drop('total_muni', axis=1)
 
+def convert_gender(x):
+    return 1 if x == 'Female' else 0
+
+def convert_card_type(card):
+    if card == 'junior' or card == 'classic' or card == 'gold':
+        return 1
+    return 0
+
+def drop_district_info(d, info):
+    d = d.drop([
+        'name_' + info, 'region_' + info, 'population_' + info,
+        'muni_under499_' + info, 'muni_500_1999_' + info,
+        'muni_2000_9999_' + info, 'muni_over10000_' + info,
+        'n_cities_' + info, 'ratio_urban_' + info,
+        'avg_salary_' + info, 'unemployment_95_' + info,
+        'unemployment_evolution_' + info, 'enterpreneurs_per_1000_' + info,
+        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
+    ], axis = 1)
+    return d
+
 def process_data(d):
     ### Here are some ideas of what could be done
 
@@ -475,6 +495,9 @@ def process_data(d):
 
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
+    # Normalize card information
+    d['card'] = d['type'].apply(convert_card_type)
+    d = d.drop('type', axis=1)
 
     # Theory: dates are not important, but maybe ages are
     d = get_ages(d, ['date_account', 'issued', 'birthday_owner', 'birthday_disponent'], 'date_loan')
@@ -497,27 +520,12 @@ def process_data(d):
     # Theory: The disponent doesn't affect the status of the loan
     d = d.drop('gender_disponent', axis=1)
 
-    # Theory: The gender doesn't affect the status of the loan
-    # d = d.drop('gender_owner', axis=1)
+    # Normalize the owner's gender
+    d['gender_owner'] = d['gender_owner'].apply(convert_gender)
 
     # Theory: Only 1 district will affect the loan
-    d = d.drop([
-        'name_disponent', 'region_disponent', 'population_disponent',
-        'muni_under499_disponent', 'muni_500_1999_disponent',
-        'muni_2000_9999_disponent', 'muni_over10000_disponent',
-        'n_cities_disponent', 'ratio_urban_disponent',
-        'avg_salary_disponent', 'unemployment_95_disponent',
-        'unemployment_evolution_disponent', 'enterpreneurs_per_1000_disponent',
-        'crimes_95_per_1000_disponent', 'crimes_evolution_disponent'
-    ], axis=1)
-    d = d.drop([
-        'name_owner', 'region_owner', 'population_owner',
-        'muni_under499_owner', 'muni_500_1999_owner',
-        'muni_2000_9999_owner', 'muni_over10000_owner', 'n_cities_owner',
-        'ratio_urban_owner', 'avg_salary_owner', 'unemployment_95_owner',
-        'unemployment_evolution_owner', 'enterpreneurs_per_1000_owner',
-        'crimes_95_per_1000_owner', 'crimes_evolution_owner'
-    ], axis=1)
+    d = drop_district_info(d, 'disponent')
+    d = drop_district_info(d, 'owner')
 
     # Normalize district
     d = normalize_district(d, 'muni_under499_account', 'muni_500_1999_account',
@@ -532,27 +540,18 @@ def get_data():
     (d, c) = get_processed_data()
     return (process_data(d), process_data(c))
 
+def select(d, columns):
+    new = pd.DataFrame()
+    new['status'] = d['status']
+    for c in columns:
+        new[c] = d[c]
+    return new
+
 def main():
-    # save_all_data()
-    d, c = get_data()
-    # d = d.drop(['avg_amount', 'avg_balance',
-    #     'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
-    #     'balance_distribution_median', 'balance_distribution_third_quarter',
-
-    #     'duration', 'status', 'frequency', 'gender_owner', 'ratio_urban_account',
-    #     'avg_salary_account', 'enterpreneurs_per_1000_account',
-    #     'unemployment_95_account', 'unemployment_evolution_account', 
-    #     'crimes_95_per_1000_account', 'crimes_evolution_account', 'type'
-    # ], axis=1)
-
-    # print(d.head(2).transpose())
-    print(d.dtypes)
+    d, _ = get_data()
+    # print(d.dtypes)
     print(len(d.dtypes))
-    # print(len(c.dtypes))
 
 
 if __name__ == '__main__':
     main()
-
-# Other ideas
-#  Time passed with balance < 0

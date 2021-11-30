@@ -36,22 +36,9 @@ def model_learning_and_classification(dev, competition, estimator, param_grid={}
 
     return ((auc, best_params), (competition, y))
 
-def convert_gender(x):
-    return 1 if x == 'Female' else 0
-def convert_card_type(card):
-    if card == 'junior' or card == 'classic' or card == 'gold':
-        return 1
-    return 0
-
 def main():
     # Data
     dev, competition = data.get_data()
-    
-    dev        ['gender_owner'] = dev        ['gender_owner'].apply(convert_gender)
-    competition['gender_owner'] = competition['gender_owner'].apply(convert_gender)
-    dev        ['type'] = dev        ['type'].apply(convert_card_type)
-    competition['type'] = competition['type'].apply(convert_card_type)
-
     to_drop = [
         'name_account', 'region_account', 'n_cities_account', 'avg_salary_account', 'frequency',
         'balance_distribution_first_quarter', 'balance_distribution_third_quarter',
@@ -70,7 +57,6 @@ def main():
         # 'negative_balance',
         # 'high_balance',
     ]
-
 
     dev         =         dev.drop(to_drop, axis=1)
     competition = competition.drop(to_drop, axis=1)
