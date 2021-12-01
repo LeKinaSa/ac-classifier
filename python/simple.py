@@ -13,6 +13,9 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 
+from imblearn.pipeline import Pipeline
+from imblearn.over_sampling import SMOTE
+
 def save_submission(competition, y):
     submission = competition[['loan_id']].copy()
     submission = submission.rename(columns={'loan_id': 'Id'})
@@ -25,7 +28,11 @@ def model_learning_and_classification(dev, competition, estimator, param_grid={}
     X, y = dev.loc[:, ~dev.columns.isin(['loan_id', 'status'])], dev.loc[:, 'status']
 
     cv = StratifiedKFold()
-    clf = GridSearchCV(estimator, param_grid=param_grid, scoring='roc_auc', cv=cv)
+    model = Pipeline([
+        ('sampling', SMOTE()),
+        ('classification', estimator)
+    ])
+    clf = GridSearchCV(model, param_grid=param_grid, scoring='roc_auc', cv=cv)
 
     clf.fit(X, y)
 
@@ -41,67 +48,58 @@ def main():
     # Data
     dev, competition = data.get_data()
     to_drop = [
-        'name_account', 'region_account', 'n_cities_account', 'avg_salary_account', 'frequency',
-        'balance_distribution_first_quarter', 'balance_distribution_third_quarter',
-        'avg_daily_balance', 'avg_balance',
-        'avg_amount', 'avg_abs_amount',
-        'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account', 'muni_over10000_account',
-        'ratio_urban_account',
-        'balance_deviation',
-        'unemployment_95_account',
-        'unemployment_evolution_account',
-        'crimes_95_per_1000_account',
-        'crimes_evolution_account',
-        #'enterpreneurs_per_1000_account',
-        'last_high',
-        'last_neg',
-        # 'negative_balance',
-        # 'high_balance',
+        'name_account', 'region_account', 'muni_over10000_account', 'n_cities_account', 'avg_salary_account', 'frequency',
+        'balance_distribution_third_quarter', 'avg_daily_balance', 'avg_balance', 'avg_amount',
+        'balance_deviation', 'avg_abs_amount',
+        'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account',
+        'balance_distribution_median', # Using the first quarter since it has some good graphs (first quarter + gender)
+        # 'last_high', 'negative_balance',
+        'last_neg', 'last_high'
     ]
 
     dev         =         dev.drop(to_drop, axis=1)
     competition = competition.drop(to_drop, axis=1)
 
-    # correlation_analysis.correlation_analysis_by_status(dev, competition, True, 5)
+    # correlation_analysis.correlation_analysis(dev, True, 1)
     
     # Classifiers
     classifiers = {
         'DTC' : (
             DecisionTreeClassifier(),
             {
-                'criterion': ['gini', 'entropy'],
-                'max_depth': [3, 5, 10, None],
-                'class_weight': [None, 'balanced'],
+                'classification__criterion': ['gini', 'entropy'],
+                'classification__max_depth': [3, 5, 10, None],
+                'classification__class_weight': [None, 'balanced'],
             }
         ),
         'RFC' : (
             RandomForestClassifier(),
             {
-                'n_estimators': [50, 100, 150],
-                'criterion': ['gini', 'entropy'],
-                'class_weight': ['balanced', 'balanced_subsample', None],
+                'classification__n_estimators': [50, 100, 150],
+                'classification__criterion': ['gini', 'entropy'],
+                'classification__class_weight': ['balanced', 'balanced_subsample', None],
             }
         ),
         'KNC' : (
             KNeighborsClassifier(),
             {
-                'n_neighbors': [5, 10, 20],
-                'weights': ['uniform', 'distance'],
-                'algorithm': ['ball_tree', 'kd_tree', 'brute'],
-                'p': [1, 2, 3],
+                'classification__n_neighbors': [5, 10, 20],
+                'classification__weights': ['uniform', 'distance'],
+                'classification__algorithm': ['ball_tree', 'kd_tree', 'brute'],
+                'classification__p': [1, 2, 3],
             }
         ),
         'SVC' : (
             SVC(),
             {
-                'probability': [True],
+                'classification__probability': [True],
             }
         ),
         # 'ABC' : (
         #     AdaBoostClassifier(),
         #     {
-        #         'algorithm': ['SAMME', 'SAMME.R'],
-        #         'base_estimator': [
+        #         'classification__algorithm': ['SAMME', 'SAMME.R'],
+        #         'classification__base_estimator': [
         #             DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
         #             RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
         #             # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
@@ -109,25 +107,25 @@ def main():
         #             GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
         #             #LogisticRegression(),
         #         ],
-        #         #'n_estimators': [25, 50, 75]
+        #         #'classification__n_estimators': [25, 50, 75]
         #     }
         # ),
         # 'GBC' : (
         #     GradientBoostingClassifier(),
         #     {
-        #         # 'loss': ['deviance', 'exponential'],
-        #         # 'criterion': ['friedman_mse', 'squared_error'],
-        #         # 'max_depth': [2, 3, 4, 5],
-        #         # 'max_features': ['sqrt', 'log2', None],
+        #         # 'classification__loss': ['deviance', 'exponential'],
+        #         # 'classification__criterion': ['friedman_mse', 'squared_error'],
+        #         # 'classification__max_depth': [2, 3, 4, 5],
+        #         # 'classification__max_features': ['sqrt', 'log2', None],
         #     }
         # ),
         # 'LGR': (
         #     LogisticRegression(),
         #     {
-        #         'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
-        #         'class_weight': [None, 'balanced'],
-        #         'max_iter': [50, 100, 150, 250, 500], 
-        #         # 'n_jobs': [None, 1, 2, 3],           
+        #         'classification__solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
+        #         'classification__class_weight': [None, 'balanced'],
+        #         'classification__max_iter': [50, 100, 150, 250, 500], 
+        #         # 'classification__n_jobs': [None, 1, 2, 3],           
         #     }
         # ),
         # 'StC' : (
