@@ -47,19 +47,16 @@ def model_learning_and_classification(dev, competition, estimator, param_grid={}
 def main():
     # Data
     dev, competition = data.get_data()
-    to_drop = [
-        'name_account', 'region_account', 'muni_over10000_account', 'n_cities_account', 'avg_salary_account', 'frequency',
-        'balance_distribution_third_quarter', 'avg_daily_balance', 'avg_balance', 'avg_amount',
-        'balance_deviation', 'avg_abs_amount',
-        'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account',
-        'balance_distribution_median', # Using the first quarter since it has some good graphs (first quarter + gender)
-        # 'last_high', 'negative_balance',
-        'last_neg', 'last_high'
+    selected_columns = [
+        'loan_id', 'status', 
+        'duration','gender_owner',
+        'enterpreneurs_per_1000_account', 'card',
+        'balance_distribution_first_quarter',
+        'n_cities_account', 'high_balance', 'last_neg',
+        'balance_deviation', 'avg_salary_account'
     ]
-
-    dev         =         dev.drop(to_drop, axis=1)
-    competition = competition.drop(to_drop, axis=1)
-
+    dev = data.select(dev, selected_columns)
+    competition = data.select(competition, selected_columns)
     # correlation_analysis.correlation_analysis(dev, True, 1)
     
     # Classifiers

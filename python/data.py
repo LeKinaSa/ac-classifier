@@ -542,7 +542,6 @@ def get_data():
 
 def select(d, columns):
     new = pd.DataFrame()
-    new['status'] = d['status']
     for c in columns:
         new[c] = d[c]
     return new
