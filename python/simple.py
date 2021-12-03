@@ -51,9 +51,14 @@ def main():
         'loan_id', 'status', 
         'duration','gender_owner',
         'enterpreneurs_per_1000_account', 'card',
+        #'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account',
+        'unemployment_95_account', 'unemployment_evolution_account',
+        #'crimes_95_per_1000_account', 'crimes_evolution_account',
+        'n_cities_account',
         'balance_distribution_first_quarter',
-        'n_cities_account', 'high_balance', 'last_neg',
-        'balance_deviation', 'avg_salary_account'
+        'high_balance', 'last_neg',
+        'balance_deviation',
+        #'avg_salary_account'
     ]
     dev = data.select(dev, selected_columns)
     competition = data.select(competition, selected_columns)
