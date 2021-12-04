@@ -449,6 +449,19 @@ def drop_district_info(d, info):
     ], axis = 1)
     return d
 
+def normalize_region(df, info):
+    region_name = f'region_' + info
+    region_total = df.groupby(region_name).size().rename('total').reset_index()
+    region_by_status = df.groupby([region_name,'status']).size().rename('non_paid').reset_index()
+    region_by_status = region_by_status.loc[region_by_status['status'] == 1].drop('status', axis=1)
+    region = pd.merge(left=region_total, right=region_by_status, on=region_name)
+    region['non_paid_partial'] = region['non_paid'] / region['total']
+    region = region.drop(['non_paid', 'total'], axis=1)
+
+    df = pd.merge(left=df, right=region, on=region_name, how='left')
+    df = df.drop(region_name, axis=1).rename(columns={ 'non_paid_partial' : region_name })
+    return df
+
 def process_data(d):
     ### Here are some ideas of what could be done
 
@@ -533,6 +546,9 @@ def process_data(d):
 
     # Population is a big number with no normalization, is it a problem?
     d = d.drop('population_account', axis=1)
+
+    # Normalize Region (from text to float)
+    d = normalize_region(d, 'account')
 
     return d
 

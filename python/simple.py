@@ -54,17 +54,9 @@ def main():
     # Data
     dev, competition = data.get_data()
     selected_columns = [
-        'loan_id', 'status', 
-        'duration','gender_owner',
-        'enterpreneurs_per_1000_account', 'card',
-        #'muni_under499_account', 'muni_500_1999_account', 'muni_2000_9999_account',
-        'unemployment_95_account', 'unemployment_evolution_account',
-        #'crimes_95_per_1000_account', 'crimes_evolution_account',
-        'n_cities_account',
-        'balance_distribution_first_quarter',
-        'high_balance', 'last_neg',
-        'balance_deviation',
-        #'avg_salary_account'
+        'loan_id', 'duration', 'status', 'gender_owner', #'region_account',
+        'balance_deviation', 'balance_distribution_first_quarter',
+        'card', 'high_balance', 'last_neg',
     ]
     dev = data.select(dev, selected_columns)
     competition = data.select(competition, selected_columns)
@@ -110,10 +102,10 @@ def main():
         #         'base_estimator': [
         #             DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
         #             RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
-        #             # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
-        #             # SVC(probability=True),
+        #             KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
+        #             SVC(probability=True),
         #             GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
-        #             #LogisticRegression(),
+        #             LogisticRegression(),
         #         ],
         #         'n_estimators': [25, 50, 75],
         #     }
@@ -165,6 +157,7 @@ def main():
             best_results = results
         
     print(f'\nBest classifier: {best_classifier}')
+    print(f'AUC: {best_auc}')
     (competition, prediction) = best_results
     save_submission(competition, prediction)
 
