@@ -24,15 +24,21 @@ def save_submission(competition, y):
     os.makedirs('../data/submissions/', exist_ok=True)
     submission.to_csv('../data/submissions/simple.csv', index=False)
 
-def model_learning_and_classification(dev, competition, estimator, param_grid={}):
+def model_learning_and_classification(dev, competition, estimator, param_grid={}, smote=False):
     X, y = dev.loc[:, ~dev.columns.isin(['loan_id', 'status'])], dev.loc[:, 'status']
 
     cv = StratifiedKFold()
-    model = Pipeline([
-        ('sampling', SMOTE()),
-        ('classification', estimator)
-    ])
-    clf = GridSearchCV(model, param_grid=param_grid, scoring='roc_auc', cv=cv)
+
+    if smote:
+        estimator = Pipeline([
+            ('sampling', SMOTE()),
+            ('classification', estimator)
+        ])
+        for key in list(param_grid.keys()):
+            param_grid[f'classification__{key}'] = param_grid[key]
+            del param_grid[key]
+    
+    clf = GridSearchCV(estimator, param_grid=param_grid, scoring='roc_auc', cv=cv)
 
     clf.fit(X, y)
 
@@ -69,39 +75,39 @@ def main():
         'DTC' : (
             DecisionTreeClassifier(),
             {
-                'classification__criterion': ['gini', 'entropy'],
-                'classification__max_depth': [3, 5, 10, None],
-                'classification__class_weight': [None, 'balanced'],
+                'criterion': ['gini', 'entropy'],
+                'max_depth': [3, 5, 10, None],
+                'class_weight': [None, 'balanced'],
             }
         ),
         'RFC' : (
             RandomForestClassifier(),
             {
-                'classification__n_estimators': [50, 100, 150],
-                'classification__criterion': ['gini', 'entropy'],
-                'classification__class_weight': ['balanced', 'balanced_subsample', None],
+                'n_estimators': [50, 100, 150],
+                'criterion': ['gini', 'entropy'],
+                'class_weight': ['balanced', 'balanced_subsample', None],
             }
         ),
         'KNC' : (
             KNeighborsClassifier(),
             {
-                'classification__n_neighbors': [5, 10, 20],
-                'classification__weights': ['uniform', 'distance'],
-                'classification__algorithm': ['ball_tree', 'kd_tree', 'brute'],
-                'classification__p': [1, 2, 3],
+                'n_neighbors': [5, 10, 20],
+                'weights': ['uniform', 'distance'],
+                'algorithm': ['ball_tree', 'kd_tree', 'brute'],
+                'p': [1, 2, 3],
             }
         ),
         'SVC' : (
             SVC(),
             {
-                'classification__probability': [True],
+                'probability': [True],
             }
         ),
         # 'ABC' : (
         #     AdaBoostClassifier(),
         #     {
-        #         'classification__algorithm': ['SAMME', 'SAMME.R'],
-        #         'classification__base_estimator': [
+        #         'algorithm': ['SAMME', 'SAMME.R'],
+        #         'base_estimator': [
         #             DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
         #             RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
         #             # KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
@@ -109,25 +115,24 @@ def main():
         #             GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
         #             #LogisticRegression(),
         #         ],
-        #         #'classification__n_estimators': [25, 50, 75]
+        #         'n_estimators': [25, 50, 75],
         #     }
         # ),
         # 'GBC' : (
         #     GradientBoostingClassifier(),
         #     {
-        #         # 'classification__loss': ['deviance', 'exponential'],
-        #         # 'classification__criterion': ['friedman_mse', 'squared_error'],
-        #         # 'classification__max_depth': [2, 3, 4, 5],
-        #         # 'classification__max_features': ['sqrt', 'log2', None],
+        #         # 'loss': ['deviance', 'exponential'],
+        #         # 'criterion': ['friedman_mse', 'squared_error'],
+        #         # 'max_depth': [2, 3, 4, 5],
+        #         # 'max_features': ['sqrt', 'log2', None],
         #     }
         # ),
         # 'LGR': (
         #     LogisticRegression(),
         #     {
-        #         'classification__solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
-        #         'classification__class_weight': [None, 'balanced'],
-        #         'classification__max_iter': [50, 100, 150, 250, 500], 
-        #         # 'classification__n_jobs': [None, 1, 2, 3],           
+        #         'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
+        #         'class_weight': [None, 'balanced'],
+        #         'max_iter': [50, 100, 150, 250, 500],
         #     }
         # ),
         # 'StC' : (
@@ -148,7 +153,7 @@ def main():
     for classifier in classifiers:
         print(f'Classifier: {classifier}')
         (estimator, param_grid) = classifiers[classifier]
-        (scores, results) = model_learning_and_classification(dev, competition, estimator, param_grid)
+        (scores, results) = model_learning_and_classification(dev, competition, estimator, param_grid, False)
         
         (auc, best_params) = scores
         print(f'AUC score: {auc}')
