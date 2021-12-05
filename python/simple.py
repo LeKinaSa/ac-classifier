@@ -54,7 +54,8 @@ def main():
     # Data
     dev, competition = data.get_data()
     selected_columns = [
-        'loan_id', 'duration', 'status', 'gender_owner', #'region_account',
+        'loan_id', 'duration', 'status', 'gender_owner',
+        'region_non_paid_partial_account',
         'balance_deviation', 'balance_distribution_first_quarter',
         'card', 'high_balance', 'last_neg',
     ]
@@ -156,8 +157,7 @@ def main():
             best_classifier = classifier
             best_results = results
         
-    print(f'\nBest classifier: {best_classifier}')
-    print(f'AUC: {best_auc}')
+    print(f'\nBest classifier: {best_classifier}  (AUC: {best_auc})')
     (competition, prediction) = best_results
     save_submission(competition, prediction)
 
