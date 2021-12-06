@@ -55,7 +55,6 @@ def main():
     dev, competition = data.get_data()
     selected_columns = [
         'loan_id', 'duration', 'status', 'gender_owner',
-        'region_non_paid_partial_account', # This value affects the results of the algorithm in dev (idk if it does, but it should)
         'balance_deviation', 'balance_distribution_first_quarter',
         'card', 'high_balance', 'last_neg',
     ]
@@ -65,37 +64,37 @@ def main():
     
     # Classifiers
     classifiers = {
-        'DTC' : (
-            DecisionTreeClassifier(),
-            {
-                'criterion': ['gini', 'entropy'],
-                'max_depth': [3, 5, 10, None],
-                'class_weight': [None, 'balanced'],
-            }
-        ),
-        'RFC' : (
-            RandomForestClassifier(),
-            {
-                'n_estimators': [50, 100, 150],
-                'criterion': ['gini', 'entropy'],
-                'class_weight': ['balanced', 'balanced_subsample', None],
-            }
-        ),
-        'KNC' : (
-            KNeighborsClassifier(),
-            {
-                'n_neighbors': [5, 10, 20],
-                'weights': ['uniform', 'distance'],
-                'algorithm': ['ball_tree', 'kd_tree', 'brute'],
-                'p': [1, 2, 3],
-            }
-        ),
-        'SVC' : (
-            SVC(),
-            {
-                'probability': [True],
-            }
-        ),
+        # 'DTC' : (
+        #     DecisionTreeClassifier(),
+        #     {
+        #         'criterion': ['gini', 'entropy'],
+        #         'max_depth': [3, 5, 10, None],
+        #         'class_weight': [None, 'balanced'],
+        #     }
+        # ),
+        # 'RFC' : (
+        #     RandomForestClassifier(),
+        #     {
+        #         'n_estimators': [50, 100, 150],
+        #         'criterion': ['gini', 'entropy'],
+        #         'class_weight': ['balanced', 'balanced_subsample', None],
+        #     }
+        # ),
+        # 'KNC' : (
+        #     KNeighborsClassifier(),
+        #     {
+        #         'n_neighbors': [5, 10, 20],
+        #         'weights': ['uniform', 'distance'],
+        #         'algorithm': ['ball_tree', 'kd_tree', 'brute'],
+        #         'p': [1, 2, 3],
+        #     }
+        # ),
+        # 'SVC' : (
+        #     SVC(),
+        #     {
+        #         'probability': [True],
+        #     }
+        # ),
         # 'ABC' : (
         #     AdaBoostClassifier(),
         #     {
@@ -120,14 +119,14 @@ def main():
         #         # 'max_features': ['sqrt', 'log2', None],
         #     }
         # ),
-        # 'LGR': (
-        #     LogisticRegression(),
-        #     {
-        #         'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
-        #         'class_weight': [None, 'balanced'],
-        #         'max_iter': [50, 100, 150, 250, 500],
-        #     }
-        # ),
+        'LGR': (
+            LogisticRegression(),
+            {
+                'solver': ['newton-cg', 'sag', 'lbfgs', 'liblinear'],
+                'class_weight': [None, 'balanced'],
+                'max_iter': [50, 100, 150, 250, 500],
+            }
+        ),
         # 'StC' : (
         #     StackingClassifier(
         #         estimators=[
