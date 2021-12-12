@@ -8,6 +8,7 @@ import data
 
 ####################################################################################################
 ####################        Global Variables for showing only some graphs       ####################
+start = True
 # Correlation Graphs
 district             = False
 loan                 = False
@@ -34,7 +35,7 @@ def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation G
     plt.subplots(figsize=(11, 9))
     
     # Generate a custom diverging colormap
-    cmap = sb.diverging_palette(230, 20, as_cmap=True)
+    cmap = sb.diverging_palette(260, 20, as_cmap=True)
 
     # Draw the heatmap with the mask and correct aspect ratio
     fmt = f'.0{decimal_places}f'
@@ -65,6 +66,12 @@ def count_plot(d, x):
     plt.show()
 
 def main():
+    if start:
+        d, _ = data.get_data()
+        d = d.groupby('status').size()
+        plt.pie(d)
+        plt.savefig('../img/start.png')
+
     #### District (Correlation)
     if district:
         d = data.get_district_data()
@@ -90,6 +97,14 @@ def main():
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
     if analyze_by_status:
         d, c = data.get_data()
+        selected = [
+            'loan_id', 'status',
+            'duration',
+            'gender_owner',
+            'balance_deviation', 'balance_distribution_first_quarter',
+            'card', 'high_balance', 'last_neg',
+        ]
+        (d, c) = (data.select(d, selected), data.select(c, selected))
         correlation_analysis_by_status(d, c, True, 1)
 
     #### All with Some Processing (Correlation)
