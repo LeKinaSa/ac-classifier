@@ -8,13 +8,13 @@ import data
 
 ####################################################################################################
 ####################        Global Variables for showing only some graphs       ####################
-start = True
+start = False
 # Correlation Graphs
 district             = False
 loan                 = False
 loan_and_trans       = False
 all_corr             = False
-analyze_by_status    = False
+analyze_by_status    = True
 all_with_processing  = False
 parts                = False
 # All Possible Scatter and Count Plots
@@ -22,7 +22,7 @@ all_possible_scatter = False
 all_possible_count   = False
 ####################################################################################################
 
-def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation Graph'):
+def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation Graph', filename=None, bigger=False):
     sb.set_theme(style="white")
 
     # Compute the correlation matrix
@@ -32,7 +32,10 @@ def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation G
     mask = np.triu(np.ones_like(corr, dtype=bool))
 
     # Set up the matplotlib figure
-    plt.subplots(figsize=(11, 9))
+    figsize = (11, 9)
+    if bigger:
+        figsize = (22, 18)
+    plt.subplots(figsize=figsize)
     
     # Generate a custom diverging colormap
     cmap = sb.diverging_palette(260, 20, as_cmap=True)
@@ -45,6 +48,8 @@ def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation G
     plt.yticks(rotation=45, ha='right')
     plt.xticks(rotation=45, ha='right')
     
+    if filename != None:
+        plt.savefig(filename)
     plt.show()
 
 def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
@@ -56,8 +61,8 @@ def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
     
     p = d.loc[d['status'] == 0].drop('status', axis=1)
     n = d.loc[d['status'] == 1].drop('status', axis=1)
-    correlation_analysis(p, annot, decimal_places, 'Correlation Graph (paid loans)')
-    correlation_analysis(n, annot, decimal_places, 'Correlation Graph (non paid loans)')
+    correlation_analysis(p, annot, decimal_places, 'Correlation Graph (paid loans)', '../img/paid.png')
+    correlation_analysis(n, annot, decimal_places, 'Correlation Graph (non paid loans)', '../img/non_paid.png')
     
     correlation_analysis(c, annot, decimal_places, 'Correlation Graph (competition data)')
 
