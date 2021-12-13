@@ -468,7 +468,7 @@ def normalize_region(df, info):
     df = df.drop([name, region], axis=1)
     return df
 
-def process_data(d):
+def process_data(d, drop_loan_date=True):
     ### Here are some ideas of what could be done
 
     # Drop ids and disctrict codes (don't drop 'loan_id')
@@ -528,7 +528,8 @@ def process_data(d):
     })
     
     # Since the date_loan was used to normalize the dates, it is no longer needed
-    d = d.drop('date_loan', axis=1)
+    if drop_loan_date:
+        d = d.drop('date_loan', axis=1)
     
     # Theory: ages are not normalized so maybe they can be a problem (?)
     d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
@@ -561,6 +562,10 @@ def process_data(d):
 def get_data():
     (d, c) = get_processed_data()
     return (process_data(d), process_data(c))
+
+def get_data_with_dates():
+    (d, c) = get_processed_data()
+    return (process_data(d, False), process_data(c, False))
 
 def select(d, columns):
     new = pd.DataFrame()
