@@ -41,6 +41,10 @@ def correlation_analysis(df, annot=False, decimal_places=1, title='Correlation G
     fmt = f'.0{decimal_places}f'
     sb.heatmap(corr, mask=mask, cmap=cmap, annot=annot, fmt=fmt, center=0,
                 square=True, linewidths=.5, cbar_kws={"shrink": .5}).set(title=title)
+    
+    plt.yticks(rotation=45, ha='right')
+    plt.xticks(rotation=45, ha='right')
+    
     plt.show()
 
 def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
