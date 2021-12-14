@@ -1,7 +1,9 @@
 import pandas as pd
+from pandas.core.tools.datetimes import to_datetime
 import seaborn as sb
 import matplotlib.pyplot as plt
 import data
+from data import get_readable_date
 
 def remove_dups(lst):
     return sorted(set(lst), key=lambda x: lst.index(x))
@@ -35,32 +37,69 @@ dev, comp = data.get_loan_account_district_data()
 print(dev.nunique())
 print(dev.dtypes)
 
-sb.histplot(data=dev, x='amount')
+print(dev.date_x.head())
+
+g = sb.histplot(data=dev, x='amount')
+g.set(
+    title='Distribution of Loan Amounts',
+    ylabel='Count',
+    xlabel='Amount',
+)
+plt.bar_label(g.containers[0])
 plt.show()
 
-sb.boxplot(data=dev, x='amount')
+g = sb.boxplot(data=dev, x='status', y='amount')
+g.set_xticklabels(['Paid', 'Unpaid'])
+g.set(
+    title='Loan Amounts According to Status',
+    ylabel='Status',
+    xlabel='Amount',
+)
 plt.show()
 
-sb.histplot(data=dev, x='status')
-plt.show()
+# sb.histplot(data=dev, x='status')
+# plt.show()
 
-sb.boxplot(x='district_id', y='amount', data=dev)
-plt.show()
+# sb.boxplot(x='district_id', y='amount', data=dev)
+# plt.show()
 
 sb.boxplot(x='region', y='amount', data=dev)
 plt.show()
 
-sb.displot(data=dev, x='region', hue='status', multiple='dodge')
+df = dev.copy()
+df['paid'] = df['status'].apply(lambda x: True if x == 0 else False)
+
+gb = df.groupby('region')['paid'].value_counts(normalize=True).mul(100).rename('paid_percent').reset_index()
+g = sb.histplot(data=gb, x='region', hue='paid', weights='paid_percent', 
+        discrete=True, multiple='stack', shrink=0.8, hue_order=[False, True],
+        palette=['firebrick', 'forestgreen'])
+g.set(
+    title='Percentage of Paid Loans per Region',
+    ylabel='Percentage',
+    xlabel='Region',
+)
+g.get_legend().set_title('Paid')
+plt.bar_label(g.containers[0])
+#sb.displot(data=dev, x='region', hue='status', multiple='dodge')
 plt.show()
 
-sb.displot(data=dev, x='frequency', hue='status', multiple='dodge')
+gb = df.groupby('frequency')['paid'].value_counts(normalize=True).mul(100).rename('paid_percent').reset_index()
+g = sb.histplot(data=gb, x='frequency', hue='paid', weights='paid_percent', 
+        discrete=True, multiple='stack', shrink=0.8, hue_order=[False, True],
+        palette=['firebrick', 'forestgreen'])
+g.set(
+    title='Percentage of Paid Loans per Frequency',
+    ylabel='Percentage',
+    xlabel='Frequency',
+)
+#sb.displot(data=dev, x='frequency', hue='status', multiple='dodge')
 plt.show()
 
 sb.displot(data=dev, x='amount', hue='status', hue_order=[0, 1], multiple='dodge')
 plt.show()
 
-sb.kdeplot(x='date_x', hue='status', data=dev)
-plt.show()
+# sb.kdeplot(x='date_x', hue='status', data=dev)
+# plt.show()
 
 #dev['frequency_percent'] = dev.groupby('status')['frequency'].apply(lambda x: 100*x/x.sum())
 print(len(dev[dev['frequency'] == 'weekly issuance']))
@@ -73,24 +112,34 @@ plt.show()
 percentage_plot(dev, 'frequency', 'status')
 plt.show()
 
-percentage_plot(dev, 'region', 'status')
+g = percentage_plot(dev, 'region', 'status')
+g.set(
+    title='Percentage of Paid Loans per Region',
+    ylabel='Percentage',
+    xlabel='Region',
+)
 plt.show()
 
 sb.displot(data=dev, x='region', hue='status', hue_order=[0,1], multiple='fill')
 plt.show()
 
-sb.kdeplot(x='date_x', hue='status', data=comp) # TODO: see
+dev['date_proper'] = pd.to_datetime(dev['date_x'].apply(lambda x: get_readable_date(x)))
+comp['date_proper'] = pd.to_datetime(comp['date_x'].apply(lambda x: get_readable_date(x)))
+
+# sb.kdeplot(x='date_x', hue='status', data=comp) # TODO: see
+plt.hist(data=dev, x='date_proper', alpha=0.5, edgecolor='k', label='Development')
+plt.hist(data=comp, x='date_proper', alpha=0.5, edgecolor='k', label='Competition')
 plt.show()
 
 ### Card ###
 
-card_dev, _ = data.get_card_data()
+# card_dev, _ = data.get_card_data()
 
-sb.countplot(data=card_dev, x='type', order=['junior', 'classic', 'gold'])
-plt.show()
+# sb.countplot(data=card_dev, x='type', order=['junior', 'classic', 'gold'])
+# plt.show()
 
-sb.countplot(data=card_dev, x='disp_id')
-plt.show()
+# sb.countplot(data=card_dev, x='disp_id')
+# plt.show()
 
 ### Transactions ###
 
