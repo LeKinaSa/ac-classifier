@@ -126,8 +126,12 @@ dev['date_proper'] = pd.to_datetime(dev['date_x'].apply(lambda x: data.get_reada
 comp['date_proper'] = pd.to_datetime(comp['date_x'].apply(lambda x: data.get_readable_date(x)))
 
 # sb.kdeplot(x='date_x', hue='status', data=comp) # TODO: see
-plt.hist(data=dev, x='date_proper', alpha=0.5, edgecolor='k', label='Development')
-plt.hist(data=comp, x='date_proper', alpha=0.5, edgecolor='k', label='Competition')
+plt.hist(data=dev, x='date_proper', alpha=0.5, edgecolor='k', label='Development', bins=10)
+plt.hist(data=comp, x='date_proper', alpha=0.5, edgecolor='k', label='Competition', bins=5)
+plt.title('Loan Date Distribution')
+plt.xlabel('Loan Date')
+plt.ylabel('Count')
+plt.legend()
 plt.show()
 
 ### Card ###
