@@ -105,10 +105,10 @@ def main():
             {
                 'algorithm': ['SAMME', 'SAMME.R'],
                 'base_estimator': [
-                    DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
-                    RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
-                    SVC(probability=True),
-                    GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
+                    #DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
+                    RandomForestClassifier(class_weight='balanced_subsample', criterion='gini', n_estimators=100),
+                    #SVC(probability=True),
+                    #GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
                     LogisticRegression(),
                 ],
                 'n_estimators': [25, 50, 75],

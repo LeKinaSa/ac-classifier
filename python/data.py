@@ -417,14 +417,14 @@ def get_ages(df, creation_dates, loan_date):
         df[creation_date] = df[creation_date].floordiv(10000)
     return df
 
-def normalize_district(df, muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities):
+def normalize_district(df, muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities):
     # Obtain total municipalities
     df['total_muni'] = 0
-    for column in [muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000]:
+    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000]:
         df['total_muni'] = df['total_muni'].add(df[column])
     
     # Normalize municipalities
-    for column in [muni_under_499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities]:
+    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities]:
         df[column] = df[column].divide(df['total_muni'])
 
     return df.drop('total_muni', axis=1)
