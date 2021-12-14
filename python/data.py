@@ -29,7 +29,7 @@ def get_district_data(): # District (district)
         'average salary ': 'avg_salary',
         'unemploymant rate \'95 ' : 'unemployment_95',
         'unemploymant rate \'96 ' : 'unemployment_96',
-        'no. of enterpreneurs per 1000 inhabitants ' : 'enterpreneurs_per_1000',
+        'no. of enterpreneurs per 1000 inhabitants ' : 'entrepreneurs_per_1000',
         'no. of commited crimes \'95 ' : 'crimes_95',
         'no. of commited crimes \'96 ': 'crimes_96',
     })
@@ -273,7 +273,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'avg_salary' : 'avg_salary_account',
         'unemployment_95' : 'unemployment_95_account',
         'unemployment_96' : 'unemployment_96_account',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_account',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_account',
         'crimes_95_per_1000' : 'crimes_95_per_1000_account',
         'crimes_96_per_1000' : 'crimes_96_per_1000_account',
     })
@@ -291,7 +291,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'avg_salary' : 'avg_salary_owner',
         'unemployment_95' : 'unemployment_95_owner',
         'unemployment_96' : 'unemployment_96_owner',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_owner',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_owner',
         'crimes_95_per_1000' : 'crimes_95_per_1000_owner',
         'crimes_96_per_1000' : 'crimes_96_per_1000_owner',
     })
@@ -346,7 +346,7 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
         'avg_salary' : 'avg_salary_disponent',
         'unemployment_95' : 'unemployment_95_disponent',
         'unemployment_96' : 'unemployment_96_disponent',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_disponent',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_disponent',
         'crimes_95_per_1000' : 'crimes_95_per_1000_disponent',
         'crimes_96_per_1000' : 'crimes_96_per_1000_disponent',        
         'client_id' : 'client_id_disponent',
@@ -444,7 +444,7 @@ def drop_district_info(d, info):
         'muni_2000_9999_' + info, 'muni_over10000_' + info,
         'n_cities_' + info, 'ratio_urban_' + info,
         'avg_salary_' + info, 'unemployment_95_' + info,
-        'unemployment_evolution_' + info, 'enterpreneurs_per_1000_' + info,
+        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
         'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
     ], axis = 1)
     return d
