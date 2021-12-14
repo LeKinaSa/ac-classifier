@@ -77,9 +77,14 @@ def main():
     # Data
     dev, competition = data.get_data()
     selected_columns = [
-        'loan_id', 'duration', 'status', 'gender_owner',
-        'balance_deviation', 'balance_distribution_first_quarter',
-        'card', 'high_balance', 'last_neg',
+        'loan_id', 'status',
+        #'gender_owner',
+        #'duration',
+        #'card',
+        'balance_deviation',
+        #'balance_distribution_median',
+        'balance_distribution_first_quarter',
+        'high_balance', 'last_neg',
     ]
     dev = data.select(dev, selected_columns)
     competition = data.select(competition, selected_columns)
@@ -87,61 +92,28 @@ def main():
     
     # Classifiers
     classifiers = {
-        # 'DTC' : (
-        #     DecisionTreeClassifier(),
+        # 'RFC' : (
+        #     RandomForestClassifier(),
         #     {
+        #         'n_estimators': [50, 100, 150],
         #         'criterion': ['gini', 'entropy'],
-        #         'max_depth': [3, 5, 10, None],
-        #         'class_weight': [None, 'balanced'],
+        #         'class_weight': ['balanced', 'balanced_subsample', None],
         #     }
         # ),
-        'RFC' : (
-            RandomForestClassifier(),
+        'ABC' : (
+            AdaBoostClassifier(),
             {
-                'n_estimators': [50, 100, 150],
-                'criterion': ['gini', 'entropy'],
-                'class_weight': ['balanced', 'balanced_subsample', None],
+                'algorithm': ['SAMME', 'SAMME.R'],
+                'base_estimator': [
+                    DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
+                    RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
+                    SVC(probability=True),
+                    GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
+                    LogisticRegression(),
+                ],
+                'n_estimators': [25, 50, 75],
             }
         ),
-        # 'KNC' : (
-        #     KNeighborsClassifier(),
-        #     {
-        #         'n_neighbors': [5, 10, 20],
-        #         'weights': ['uniform', 'distance'],
-        #         'algorithm': ['ball_tree', 'kd_tree', 'brute'],
-        #         'p': [1, 2, 3],
-        #     }
-        # ),
-        # 'SVC' : (
-        #     SVC(),
-        #     {
-        #         'probability': [True],
-        #     }
-        # ),
-        # 'ABC' : (
-        #     AdaBoostClassifier(),
-        #     {
-        #         'algorithm': ['SAMME', 'SAMME.R'],
-        #         'base_estimator': [
-        #             DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
-        #             RandomForestClassifier(class_weight='balanced', criterion='entropy', n_estimators=50),
-        #             KNeighborsClassifier(algorithm='ball_tree', n_neighbors=5, p=1, weights='distance'),
-        #             SVC(probability=True),
-        #             GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
-        #             LogisticRegression(),
-        #         ],
-        #         'n_estimators': [25, 50, 75],
-        #     }
-        # ),
-        # 'GBC' : (
-        #     GradientBoostingClassifier(),
-        #     {
-        #         # 'loss': ['deviance', 'exponential'],
-        #         # 'criterion': ['friedman_mse', 'squared_error'],
-        #         # 'max_depth': [2, 3, 4, 5],
-        #         # 'max_features': ['sqrt', 'log2', None],
-        #     }
-        # ),
         # 'LGR': (
         #     LogisticRegression(),
         #     {
@@ -149,16 +121,6 @@ def main():
         #         'class_weight': [None, 'balanced'],
         #         'max_iter': [50, 100, 150, 250, 500],
         #     }
-        # ),
-        # 'StC' : (
-        #     StackingClassifier(
-        #         estimators=[
-        #             RandomForestClassifier(n_estimators=10, random_state=42),
-        #             KNeighborsClassifier(),
-        #         ],
-        #         final_estimator=LogisticRegression()
-        #     ),
-        #     {}
         # ),
     }
 
