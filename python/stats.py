@@ -36,6 +36,33 @@ dev, comp = data.get_loan_account_district_data()
 print(dev.nunique())
 print(dev.dtypes)
 
+dev_m = dev.copy()
+dev_m['date_x'] = pd.to_datetime(dev_m['date_x'].apply(data.get_birthday_from_birth_number))
+
+d_maj = dev_m[dev_m['status'] == 0]
+d_min = dev_m[dev_m['status'] == 1]
+
+d_under = d_maj.sample(len(d_min.index), random_state=0)
+dev_m = pd.concat([d_under, d_min])
+
+sb.scatterplot(data=dev_m, x='unemployment_95', y='amount', hue='status')
+plt.show()
+
+sb.scatterplot(data=dev_m, x='enterpreneurs_per_1000', y='amount', hue='status')
+plt.show()
+
+sb.scatterplot(data=dev_m, x='population', y='amount', hue='status')
+plt.show()
+
+sb.scatterplot(data=dev_m, x='crimes_95_per_1000', y='amount', hue='status')
+plt.show()
+
+sb.scatterplot(data=dev_m, x='ratio_urban', y='amount', hue='status')
+plt.show()
+
+sb.histplot(dev, x="amount")
+plt.show()
+
 print(dev.date_x.head())
 
 g = sb.histplot(data=dev, x='amount')
