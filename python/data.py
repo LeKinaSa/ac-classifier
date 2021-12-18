@@ -1,3 +1,5 @@
+
+import os
 import statistics
 import pandas as pd
 
@@ -27,7 +29,7 @@ def get_district_data(): # District (district)
         'average salary ': 'avg_salary',
         'unemploymant rate \'95 ' : 'unemployment_95',
         'unemploymant rate \'96 ' : 'unemployment_96',
-        'no. of enterpreneurs per 1000 inhabitants ' : 'enterpreneurs_per_1000',
+        'no. of enterpreneurs per 1000 inhabitants ' : 'entrepreneurs_per_1000',
         'no. of commited crimes \'95 ' : 'crimes_95',
         'no. of commited crimes \'96 ': 'crimes_96',
     })
@@ -111,15 +113,17 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
     transactions = get_transactions_data()
     transactions = transactions.drop(['trans_id', 'date', 'balance', 'account', 'bank', 'k_symbol', 'operation'], axis=1)
     
+    t = transactions.groupby('account_id')['amount'].mean().rename('avg_abs_amount').reset_index()
+
     transactions = modify_transactions_by_type(transactions)
     transactions = transactions.groupby('account_id')['amount'].mean().rename('avg_amount').reset_index()
 
-    return transactions
+    return pd.merge(left=transactions, right=t, on='account_id')
 
 def get_average_daily_balance_data(): # Transactions (average daily balance)
     loan_dev, loan_comp = get_loan_data()
     loans = loan_dev.append(loan_comp)
-    loans = loans.drop(['loan_id', 'amount', 'duration', 'payments', 'status'], axis=1)
+    loans = loans.drop(['loan_id', 'amount', 'duration', 'status'], axis=1)
     transactions = get_transactions_data()
     transactions = transactions.drop(['trans_id', 'account', 'bank', 'k_symbol', 'operation', 'amount', 'type'], axis=1)
 
@@ -137,6 +141,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         if len(loan) == 0:
             continue
         loan_date = loan.iloc[0]['date']
+        loan_payments = loan.iloc[0]['payments']
 
         line['account_id'] = id
 
@@ -157,12 +162,32 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         line['avg_balance'] = group[1]['balance'].mean()
 
         if len(days) == 0:
+            line['negative_balance'] = None
+            line['high_balance'] = None
+            line['last_neg'] = None
+            line['last_high'] = None
             line['avg_daily_balance'] = None
             line['balance_distribution_first_quarter'] = None
             line['balance_distribution_median']        = None
             line['balance_distribution_third_quarter'] = None
             line['balance_deviation'] = None
         else:
+            line['negative_balance'] = len(list(filter(lambda x: x < 0, days))) / len(days)
+            line['high_balance'] = len(list(filter(lambda x: x < loan_payments, days))) / len(days)
+            
+            for index in range(len(days) - 1, -1, -1):
+                if days[index] < 0:
+                    line['last_neg'] = (len(days) - index) / len(days)
+                    break
+            else:
+                line['last_neg'] = 1
+            for index in range(len(days) - 1, -1, -1):
+                if days[index] > loan_payments:
+                    line['last_high'] = (len(days) - index) / len(days)
+                    break
+            else:
+                line['last_high'] = 1
+            
             line['avg_daily_balance'] = statistics.mean(days)
 
             first_quarter, median, third_quarter = statistics.quantiles(days)
@@ -177,11 +202,18 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
     
     return df
 
+def get_number_of_transactions_data(): # Transactions (number of transactions)
+    transactions = get_transactions_data()
+    transactions = transactions.groupby('account_id')['trans_id'].count().rename('n_transactions').reset_index()
+    return transactions
+
 def get_improved_transaction_data(): # Transactions (improved)
     transactions_mean = get_mean_transaction_data()
     transactions_daily = get_average_daily_balance_data()
+    n_transactions = get_number_of_transactions_data()
 
-    return pd.merge(left=transactions_mean, right=transactions_daily, on='account_id')
+    transactions_info = pd.merge(left=transactions_mean, right=n_transactions, on='account_id')
+    return pd.merge(left=transactions_daily, right=transactions_info, on='account_id')
 
 ### Merged Tables ###
 
@@ -241,7 +273,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'avg_salary' : 'avg_salary_account',
         'unemployment_95' : 'unemployment_95_account',
         'unemployment_96' : 'unemployment_96_account',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_account',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_account',
         'crimes_95_per_1000' : 'crimes_95_per_1000_account',
         'crimes_96_per_1000' : 'crimes_96_per_1000_account',
     })
@@ -259,7 +291,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'avg_salary' : 'avg_salary_owner',
         'unemployment_95' : 'unemployment_95_owner',
         'unemployment_96' : 'unemployment_96_owner',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_owner',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_owner',
         'crimes_95_per_1000' : 'crimes_95_per_1000_owner',
         'crimes_96_per_1000' : 'crimes_96_per_1000_owner',
     })
@@ -314,7 +346,7 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
         'avg_salary' : 'avg_salary_disponent',
         'unemployment_95' : 'unemployment_95_disponent',
         'unemployment_96' : 'unemployment_96_disponent',
-        'enterpreneurs_per_1000' : 'enterpreneurs_per_1000_disponent',
+        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_disponent',
         'crimes_95_per_1000' : 'crimes_95_per_1000_disponent',
         'crimes_96_per_1000' : 'crimes_96_per_1000_disponent',        
         'client_id' : 'client_id_disponent',
@@ -351,14 +383,21 @@ def get_all_data():
 
 def save_all_data():
     d, c = get_all_data()
-    d.to_csv('../data/processed/dev.csv')
-    c.to_csv('../data/processed/comp.csv')
+    os.makedirs('../data/processed/', exist_ok=True)
+    d.to_csv('../data/processed/dev.csv', index=False)
+    c.to_csv('../data/processed/comp.csv', index=False)
 
 ### Using the Data Saved ###
 
 def get_processed_data():
-    d = pd.read_csv('../data/processed/dev.csv')
-    c = pd.read_csv('../data/processed/comp.csv')
+    dev_file  = '../data/processed/dev.csv'
+    comp_file = '../data/processed/comp.csv'
+
+    if not os.path.exists(dev_file) or not os.path.exists(comp_file):
+        save_all_data()
+    
+    d = pd.read_csv(dev_file)
+    c = pd.read_csv(comp_file)
     
     return (d, c)
 
@@ -378,16 +417,63 @@ def get_ages(df, creation_dates, loan_date):
         df[creation_date] = df[creation_date].floordiv(10000)
     return df
 
-def get_data():
-    (d, c) = get_processed_data()
-    return (process_data(d), process_data(c))
+def normalize_district(df, muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities):
+    # Obtain total municipalities
+    df['total_muni'] = 0
+    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000]:
+        df['total_muni'] = df['total_muni'].add(df[column])
+    
+    # Normalize municipalities
+    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities]:
+        df[column] = df[column].divide(df['total_muni'])
 
-def process_data(d):
+    return df.drop('total_muni', axis=1)
+
+def convert_gender(x):
+    return 1 if x == 'Female' else 0
+
+def convert_card_type(card):
+    if card == 'junior' or card == 'classic' or card == 'gold':
+        return 1
+    return 0
+
+def drop_district_info(d, info):
+    d = d.drop([
+        'name_' + info, 'region_' + info, 'population_' + info,
+        'muni_under499_' + info, 'muni_500_1999_' + info,
+        'muni_2000_9999_' + info, 'muni_over10000_' + info,
+        'n_cities_' + info, 'ratio_urban_' + info,
+        'avg_salary_' + info, 'unemployment_95_' + info,
+        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
+        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
+    ], axis = 1)
+    return d
+
+def normalize_region(df, info):
+    dev, _ = get_processed_data()
+    # The percentages of loans paid per region is calculated based on the dev dataset
+    
+    name = f'name_{info}'
+    region = f'region_{info}'
+    region_non_paid = f'region_non_paid_partial_{info}'
+
+    region_total     = dev.groupby(region).size().rename('total').reset_index()
+    region_by_status = dev.groupby([region,'status']).size().rename('non_paid').reset_index()
+    region_by_status = region_by_status.loc[region_by_status['status'] == 1].drop('status', axis=1)
+    region_partials  = pd.merge(left=region_total, right=region_by_status, on=region)
+    region_partials[region_non_paid] = region_partials['non_paid'].divide(region_partials['total'])
+    region_partials  = region_partials.drop(['non_paid', 'total'], axis=1)
+    
+    df = pd.merge(left=df, right=region_partials, on=region)
+    df = df.drop([name, region], axis=1)
+    return df
+
+def process_data(d, drop_loan_date=True):
     ### Here are some ideas of what could be done
 
-    # Drop ids and disctrict codes
+    # Drop ids and disctrict codes (don't drop 'loan_id')
     d = d.drop([
-        'loan_id', 'account_id', 'client_id_owner', 'client_id_disponent',
+        'account_id', 'client_id_owner', 'client_id_disponent',
         'district_id_account', 'district_id_owner', 'district_id_disponent',
         'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
     ], axis=1)
@@ -400,7 +486,7 @@ def process_data(d):
         'avg_amount', 'avg_balance',
         'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
         'balance_distribution_median', 'balance_distribution_third_quarter'
-    ], 'payments') # TODO: this variables (except maybe 'avg_amount') are probably correlated: check with graphs
+    ], 'payments')
 
     # Use the payment to normalize salaries
     d = normalize(d, ['avg_salary_account', 'avg_salary_owner', 'avg_salary_disponent'], 'payments')
@@ -428,6 +514,9 @@ def process_data(d):
 
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
+    # Normalize card information
+    d['card'] = d['type'].apply(convert_card_type)
+    d = d.drop('type', axis=1)
 
     # Theory: dates are not important, but maybe ages are
     d = get_ages(d, ['date_account', 'issued', 'birthday_owner', 'birthday_disponent'], 'date_loan')
@@ -439,55 +528,56 @@ def process_data(d):
     })
     
     # Since the date_loan was used to normalize the dates, it is no longer needed
-    d = d.drop('date_loan', axis=1)
-    
-    # Theory: The disponent doesn't affect the payment of the loan
-    d = d.drop([
-        'age_disponent', 'gender_disponent', 'name_disponent', 'region_disponent',
-        'population_disponent', 'muni_under499_disponent', 'muni_500_1999_disponent',
-        'muni_2000_9999_disponent', 'muni_over10000_disponent', 'n_cities_disponent',
-        'ratio_urban_disponent', 'avg_salary_disponent', 'unemployment_95_disponent',
-        'unemployment_evolution_disponent', 'enterpreneurs_per_1000_disponent',
-        'crimes_95_per_1000_disponent', 'crimes_evolution_disponent'
-    ], axis=1)
+    if drop_loan_date:
+        d = d.drop('date_loan', axis=1)
     
     # Theory: ages are not normalized so maybe they can be a problem (?)
-    d = d.drop(['age_card', 'age_account', 'age_owner'], axis=1)
+    d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
+    
+    # Theory: number of transactions is not normalized so maybe it can be a problem (?)
+    d = d.drop('n_transactions', axis=1)
 
-    # Theory: Only 1 district will affect the loan (owner or account? - for now, we are gonna go with account) - maybe do a combination of both?
-    d = d.drop([
-        'name_owner', 'region_owner', 'population_owner', 'muni_under499_owner',
-        'muni_500_1999_owner', 'muni_2000_9999_owner', 'muni_over10000_owner',
-        'n_cities_owner', 'ratio_urban_owner', 'avg_salary_owner',
-        'unemployment_95_owner', 'unemployment_evolution_owner', 'enterpreneurs_per_1000_owner',
-        'crimes_95_per_1000_owner', 'crimes_evolution_owner'
-    ], axis=1)
+    # Theory: The disponent doesn't affect the status of the loan
+    d = d.drop('gender_disponent', axis=1)
 
-    # Normalize district (account_district)
-    # TODO
+    # Normalize the owner's gender
+    d['gender_owner'] = d['gender_owner'].apply(convert_gender)
+
+    # Theory: Only 1 district will affect the loan
+    d = drop_district_info(d, 'disponent')
+    d = drop_district_info(d, 'owner')
+
+    # Normalize district
+    d = normalize_district(d, 'muni_under499_account', 'muni_500_1999_account',
+            'muni_2000_9999_account', 'muni_over10000_account', 'n_cities_account')
+
+    # Population is a big number with no normalization, is it a problem?
+    d = d.drop('population_account', axis=1)
+
+    # Normalize Region (from text to float)
+    d = normalize_region(d, 'account')
 
     return d
 
+def get_data():
+    (d, c) = get_processed_data()
+    return (process_data(d), process_data(c))
+
+def get_data_with_dates():
+    (d, c) = get_processed_data()
+    return (process_data(d, False), process_data(c, False))
+
+def select(d, columns):
+    new = pd.DataFrame()
+    for c in columns:
+        new[c] = d[c]
+    return new
+
 def main():
-    d, c = get_data()
-    # d = d.drop(['avg_amount', 'avg_balance',
-    #     'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
-    #     'balance_distribution_median', 'balance_distribution_third_quarter',
-
-    #     'duration', 'status', 'frequency', 'gender_owner', 'ratio_urban_account',
-    #     'avg_salary_account', 'enterpreneurs_per_1000_account',
-    #     'unemployment_95_account', 'unemployment_evolution_account', 
-    #     'crimes_95_per_1000_account', 'crimes_evolution_account', 'type'
-    # ], axis=1)
-
-    #print(d.head(5).transpose())
-    print(d.dtypes)
-    #print(len(d.dtypes))
-    print(len(c.dtypes))
+    d, _ = get_data()
+    # print(d.dtypes)
+    print(len(d.dtypes))
 
 
 if __name__ == '__main__':
     main()
-
-# Other ideas
-#  Time passed with balance < 0
