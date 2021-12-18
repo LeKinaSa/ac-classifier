@@ -217,7 +217,7 @@ def get_improved_transaction_data(): # Transactions (improved)
 
 ### Merged Tables ###
 
-def get_loan_account_district_data(remove_non_numeric=False): # Loan, Account, District
+def merge_loan_account_district(remove_non_numeric=False): # Loan, Account, District
     loan_dev, loan_competition = get_loan_data()
 
     account = get_account_data()
@@ -234,7 +234,7 @@ def get_loan_account_district_data(remove_non_numeric=False): # Loan, Account, D
 
     return dev, competition
 
-def get_account_owner_data(): # Client, Disposition(owner)
+def merge_client_dispowner(): # Client, Disposition(owner)
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_owners = disposition.loc[disposition['type'] == 'OWNER']
@@ -242,10 +242,10 @@ def get_account_owner_data(): # Client, Disposition(owner)
     owners = pd.merge(left=disposition_owners, right=clients, on='client_id', how='left')
     return owners
 
-def get_loan_client_owner_data(): # Loan, Account, Client, Disposition(owner)
+def merge_loan_account_client_dispowner(): # Loan, Account, Client, Disposition(owner)
     loan_dev, loan_comp = get_loan_data()
     account = get_account_data()
-    owners = get_account_owner_data()
+    owners = merge_client_dispowner()
 
     loan_dev  =  loan_dev.rename(columns={'date': 'date_loan'})
     loan_comp = loan_comp.rename(columns={'date': 'date_loan'})
@@ -257,7 +257,7 @@ def get_loan_client_owner_data(): # Loan, Account, Client, Disposition(owner)
     loan_owner_comp = pd.merge(left=loan_comp, right=account_owner, on='account_id', how='left')
     return (loan_owner_dev, loan_owner_comp)
 
-def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner)
+def merge_loan_account_client_dispowner_districtaccount_districtowner(): # Loan, Account, Client, Disposition(owner), District(account), District(owner)
     district = get_district_data()
     account_district = district.rename(columns={
         'code' : 'code_account',
@@ -295,7 +295,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'crimes_95_per_1000' : 'crimes_95_per_1000_owner',
         'crimes_96_per_1000' : 'crimes_96_per_1000_owner',
     })
-    loan_owner_dev, loan_owner_comp = get_loan_client_owner_data()
+    loan_owner_dev, loan_owner_comp = merge_loan_account_client_dispowner()
 
     dev = pd.merge(left=loan_owner_dev, right=account_district, left_on='district_id_account', right_on='code_account', how='left')
     dev = pd.merge(left=dev, right=client_district, left_on='district_id_owner', right_on='code_owner', how='left')
@@ -305,8 +305,8 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
 
     return (dev, comp)
 
-def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
-    loan_owner_district_dev, loan_owner_district_comp = get_loan_client_owner_district_data()
+def merge_loan_account_client_dispowner_districtaccount_districtowner_card(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
+    loan_owner_district_dev, loan_owner_district_comp = merge_loan_account_client_dispowner_districtaccount_districtowner()
     card = get_card_data()
 
     dev  = pd.merge(left=loan_owner_district_dev , right=card , on='disp_id', how='left')
@@ -314,23 +314,19 @@ def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Dis
     
     return (dev, comp)
 
-def get_account_disponent_data(): # Client, Disposition(disponent)
+def merge_client_dispdisponent_district(): # Client, Disposition(disponent), District(disponent)
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_disponents = disposition.loc[disposition['type'] == 'DISPONENT']
     disposition_disponents = disposition_disponents.drop(['type'], axis=1)
     disponents = pd.merge(left=disposition_disponents, right=clients, on='client_id', how='left')
-    return disponents
-
-def get_account_disponent_district_data(): # Client, Disposition(disponent), District(disponent)
-    disponent = get_account_disponent_data()
     district = get_district_data()
-    disponent_district = pd.merge(left=disponent, right=district, left_on='district_id', right_on='code', how='left')
+    disponent_district = pd.merge(left=disponents, right=district, left_on='district_id', right_on='code', how='left')
     return disponent_district
 
-def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
-    loan_dev, loan_comp = get_loan_client_owner_district_and_card_data()
-    disponent = get_account_disponent_district_data()
+def merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
+    loan_dev, loan_comp = merge_loan_account_client_dispowner_districtaccount_districtowner_card()
+    disponent = merge_client_dispdisponent_district()
     
     disponent = disponent.rename(columns={
         'code' : 'code_disponent',
@@ -372,8 +368,8 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
     
     return (dev, comp)
 
-def get_all_data():
-    (dev, comp) = get_loan_client_data()
+def merge_all():
+    (dev, comp) = merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent()
     transactions = get_improved_transaction_data()
     
     dev  = pd.merge(left=dev , right=transactions, on='account_id')
@@ -381,20 +377,20 @@ def get_all_data():
 
     return (dev, comp)
 
-def save_all_data():
-    d, c = get_all_data()
+def save_raw_data():
+    d, c = merge_all()
     os.makedirs('../data/processed/', exist_ok=True)
     d.to_csv('../data/processed/dev.csv', index=False)
     c.to_csv('../data/processed/comp.csv', index=False)
 
 ### Using the Data Saved ###
 
-def get_processed_data():
+def get_raw_data():
     dev_file  = '../data/processed/dev.csv'
     comp_file = '../data/processed/comp.csv'
 
     if not os.path.exists(dev_file) or not os.path.exists(comp_file):
-        save_all_data()
+        save_raw_data()
     
     d = pd.read_csv(dev_file)
     c = pd.read_csv(comp_file)
@@ -429,28 +425,8 @@ def normalize_district(df, muni_under499, muni_500_1999, muni_2000_9999, muni_ov
 
     return df.drop('total_muni', axis=1)
 
-def convert_gender(x):
-    return 1 if x == 'Female' else 0
-
-def convert_card_type(card):
-    if card == 'junior' or card == 'classic' or card == 'gold':
-        return 1
-    return 0
-
-def drop_district_info(d, info):
-    d = d.drop([
-        'name_' + info, 'region_' + info, 'population_' + info,
-        'muni_under499_' + info, 'muni_500_1999_' + info,
-        'muni_2000_9999_' + info, 'muni_over10000_' + info,
-        'n_cities_' + info, 'ratio_urban_' + info,
-        'avg_salary_' + info, 'unemployment_95_' + info,
-        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
-        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
-    ], axis = 1)
-    return d
-
 def normalize_region(df, info):
-    dev, _ = get_processed_data()
+    dev, _ = get_raw_data()
     # The percentages of loans paid per region is calculated based on the dev dataset
     
     name = f'name_{info}'
@@ -467,6 +443,26 @@ def normalize_region(df, info):
     df = pd.merge(left=df, right=region_partials, on=region)
     df = df.drop([name, region], axis=1)
     return df
+
+def convert_gender_to_int(x):
+    return 1 if x == 'Female' else 0
+
+def convert_card_to_int(card):
+    if card == 'junior' or card == 'classic' or card == 'gold':
+        return 1
+    return 0
+
+def drop_district_info(d, info):
+    d = d.drop([
+        'name_' + info, 'region_' + info, 'population_' + info,
+        'muni_under499_' + info, 'muni_500_1999_' + info,
+        'muni_2000_9999_' + info, 'muni_over10000_' + info,
+        'n_cities_' + info, 'ratio_urban_' + info,
+        'avg_salary_' + info, 'unemployment_95_' + info,
+        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
+        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
+    ], axis = 1)
+    return d
 
 def process_data(d, drop_loan_date=True):
     ### Here are some ideas of what could be done
@@ -515,7 +511,7 @@ def process_data(d, drop_loan_date=True):
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
     # Normalize card information
-    d['card'] = d['type'].apply(convert_card_type)
+    d['card'] = d['type'].apply(convert_card_to_int)
     d = d.drop('type', axis=1)
 
     # Theory: dates are not important, but maybe ages are
@@ -541,7 +537,7 @@ def process_data(d, drop_loan_date=True):
     d = d.drop('gender_disponent', axis=1)
 
     # Normalize the owner's gender
-    d['gender_owner'] = d['gender_owner'].apply(convert_gender)
+    d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
 
     # Theory: Only 1 district will affect the loan
     d = drop_district_info(d, 'disponent')
@@ -559,13 +555,9 @@ def process_data(d, drop_loan_date=True):
 
     return d
 
-def get_data():
-    (d, c) = get_processed_data()
-    return (process_data(d), process_data(c))
-
-def get_data_with_dates():
-    (d, c) = get_processed_data()
-    return (process_data(d, False), process_data(c, False))
+def get_data(remove_loan_date=True):
+    (d, c) = get_raw_data()
+    return (process_data(d, remove_loan_date), process_data(c, remove_loan_date))
 
 def select(d, columns):
     new = pd.DataFrame()
@@ -578,6 +570,19 @@ def main():
     # print(d.dtypes)
     print(len(d.dtypes))
 
+def set_working_directory():
+    cwd = os.getcwd()
+    ubuntu_split = cwd.split('/')
+    windows_split = cwd.split('\\')
+    if len(ubuntu_split) == 1:
+        # Windows OS
+        if windows_split[-1] != 'python':
+            os.chdir(cwd + '\python')
+    else:
+        # Ubuntu OS
+        if ubuntu_split[-1] != 'python':
+            os.chdir(cwd + '/python')
 
 if __name__ == '__main__':
+    set_working_directory()
     main()

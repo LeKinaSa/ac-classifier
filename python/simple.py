@@ -1,10 +1,4 @@
 
-import data, correlation_analysis
-
-import os
-import numpy as np
-import pandas as pd
-
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
@@ -13,9 +7,16 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, StackingClassifier, AdaBoostClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import roc_auc_score
-
 from imblearn.pipeline import Pipeline
 from imblearn.over_sampling import SMOTE
+
+import numpy as np
+import pandas as pd
+import os
+
+import data
+from data import set_working_directory
+
 
 def save_submission(competition, y):
     submission = competition[['loan_id']].copy()
@@ -196,5 +197,6 @@ def main_without_grid_search():
     save_submission(competition, prediction)
 
 if __name__ == '__main__':
+    set_working_directory()
     #main_without_grid_search()
     main()
