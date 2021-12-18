@@ -555,13 +555,9 @@ def process_data(d, drop_loan_date=True):
 
     return d
 
-def get_full_processed_data():
+def get_data(remove_loan_date=True):
     (d, c) = get_raw_data()
-    return (process_data(d), process_data(c))
-
-def get_full_processed_data_with_dates():
-    (d, c) = get_raw_data()
-    return (process_data(d, False), process_data(c, False))
+    return (process_data(d, remove_loan_date), process_data(c, remove_loan_date))
 
 def select(d, columns):
     new = pd.DataFrame()
@@ -570,13 +566,15 @@ def select(d, columns):
     return new
 
 def main():
-    d, _ = get_full_processed_data()
+    d, _ = get_data()
     # print(d.dtypes)
     print(len(d.dtypes))
 
-
-if __name__ == '__main__':
+def set_working_directory():
     cwd = os.getcwd()
     if cwd.split('\\')[-1] != 'python':
         os.chdir(cwd + "\python")
+
+if __name__ == '__main__':
+    set_working_directory()
     main()

@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 from itertools import combinations
 import os
 import data
+from data import set_working_directory
 
 ####################################################################################################
 ####################        Global Variables for showing only some graphs       ####################
 ####################################################################################################
 # General
-status_pie_chart   = False
-general_statistics = False
+status_pie_chart   = True
+general_statistics = True
 # First Contact with the Data
 district_scatter_plots            = False
 loan_amounts                      = False
@@ -34,8 +35,8 @@ analyze_by_status    = False
 all_with_processing  = False
 parts                = False
 # All Possible Scatter and Count Plots -> keep False
-all_possible_scatter = True
-all_possible_count   = True
+all_possible_scatter = False
+all_possible_count   = False
 ####################################################################################################
 
 def remove_dups(lst):
@@ -125,20 +126,20 @@ def main():
         d, _ = data.get_data()
         d = d.groupby('status').size()
         plt.pie(d)
-        plt.savefig('../img/start.png')
+        plt.show()
 
     #### General Statistics
     if general_statistics:
         dev, _ = data.get_data()
         print(dev.nunique())
         print(dev.dtypes)
-        dev, comp = data.get_processed_data()
+        dev, comp = data.get_raw_data()
         print(dev['date_loan'].head())
         print(comp['date_loan'].head())
 
     #### District Graphs
     if district_scatter_plots:
-        dev, _ = data.get_loan_account_district_data()
+        dev, _ = data.merge_loan_account_district()
         dev['date_x'] = pd.to_datetime(dev['date_x'].apply(data.get_birthday_from_birth_number))
 
         d_maj = dev[dev['status'] == 0]
@@ -168,7 +169,7 @@ def main():
     #### Loan Amounts, and Distribution of Amounts per Status
     if loan_amounts:
         # Loan Amounts
-        dev, _ = data.get_processed_data()
+        dev, _ = data.get_raw_data()
         g = sb.histplot(data=dev, x='amount')
         g.set(
             title='Distribution of Loan Amounts',
@@ -197,7 +198,7 @@ def main():
 
     # Percentage of Loans Paid per Region and Frequency
     if percentage_paid_loans:
-        dev, _ = data.get_processed_data()
+        dev, _ = data.get_raw_data()
         dev['paid'] = dev['status'].apply(lambda x: True if x == 0 else False)
 
         # Paid Loans per Region
@@ -273,8 +274,8 @@ def main():
 
     #### Owners
     if owners_graphs:
-        owners = data.get_account_owner_data()
-        loan_owner_client_dev, loan_owner_client_comp = data.get_loan_client_owner_data()
+        owners = data.merge_client_dispowner()
+        loan_owner_client_dev, loan_owner_client_comp = data.merge_loan_account_client_dispowner()
 
         sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
         plt.show()
@@ -291,17 +292,16 @@ def main():
         sb.countplot(data=loan_owner_client_dev, x='status', hue='gender')
         plt.show()
 
-        loan_owner, _ = data.get_loan_client_owner_data()
-        loan_owner['same_district'] = loan_owner['district_id_account'] == loan_owner['district_id_owner']
-        print(loan_owner['same_district'].nunique())
+        loan_owner_client_dev['same_district'] = loan_owner_client_dev['district_id_account'] == loan_owner_client_dev['district_id_owner']
+        print('District Owner == District Account:', loan_owner_client_dev['same_district'].nunique())
 
-        loan_owner_districts, _ = data.get_loan_client_owner_district_data()
+        loan_owner_districts, _ = data.merge_loan_account_client_dispowner_districtaccount_districtowner()
         loan_owner_districts['same_region'] = loan_owner_districts['region_account'] == loan_owner_districts['region_owner']
-        print(loan_owner_districts['same_region'].nunique())
+        print('Region Owner == Region Account:', loan_owner_districts['same_region'].nunique())
 
     # Salary and Daily Balance
     if salary_daily_balance:
-        dev, _ = data.get_processed_data()
+        dev, _ = data.get_raw_data()
         sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
@@ -330,7 +330,7 @@ def main():
 
     #### Transactions Amount and Deviation
     if transactions_amount_and_deviation:
-        dev, _ = data.get_processed_data()
+        dev, _ = data.get_raw_data()
         sb.scatterplot(data=dev, x='avg_amount', y='balance_deviation', hue='status').set(title='Transaction Amount and Balance Deviation Comparison', xlabel='Transaction Amount', ylabel='Balance Deviation')
         plt.xscale('log')
         plt.yscale('log')
@@ -355,7 +355,7 @@ def main():
 
     #### All (Correlation)
     if all_corr:
-        d, _ = data.get_processed_data()
+        d, _ = data.get_raw_data()
         correlation_analysis(d) # This one is too big and it is not good for analyzing
 
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
@@ -373,7 +373,7 @@ def main():
 
     #### All with Some Processing (Correlation)
     if all_with_processing:
-        d, _ = data.get_processed_data()
+        d, _ = data.get_raw_data()
         
         d['type'].fillna('None', inplace=True)
         d['card'] = d['type'].apply(lambda x: 0 if x == 'None' else 1)
@@ -439,7 +439,7 @@ def main():
 
     #### All possible scatter plots
     if all_possible_scatter:
-        d, _ = data.get_processed_data()
+        d, _ = data.get_raw_data()
         # d, _ = data.get_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(list(combinations(columns, 2)))
@@ -450,7 +450,7 @@ def main():
     
     #### All possible count plots
     if all_possible_count:
-        d, _ = data.get_processed_data()
+        d, _ = data.get_raw_data()
         # d, _ = data.get_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(columns)
@@ -462,7 +462,5 @@ def main():
     return
 
 if __name__ == '__main__':
-    cwd = os.getcwd()
-    if cwd.split('\\')[-1] != 'python':
-        os.chdir(cwd + "\python")
+    set_working_directory()
     main()
