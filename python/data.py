@@ -381,7 +381,7 @@ def get_all_data():
 
     return (dev, comp)
 
-def save_all_data():
+def save_raw_data():
     d, c = get_all_data()
     os.makedirs('../data/processed/', exist_ok=True)
     d.to_csv('../data/processed/dev.csv', index=False)
@@ -389,12 +389,12 @@ def save_all_data():
 
 ### Using the Data Saved ###
 
-def get_processed_data():
+def get_raw_data():
     dev_file  = '../data/processed/dev.csv'
     comp_file = '../data/processed/comp.csv'
 
     if not os.path.exists(dev_file) or not os.path.exists(comp_file):
-        save_all_data()
+        save_raw_data()
     
     d = pd.read_csv(dev_file)
     c = pd.read_csv(comp_file)
@@ -429,28 +429,8 @@ def normalize_district(df, muni_under499, muni_500_1999, muni_2000_9999, muni_ov
 
     return df.drop('total_muni', axis=1)
 
-def convert_gender(x):
-    return 1 if x == 'Female' else 0
-
-def convert_card_type(card):
-    if card == 'junior' or card == 'classic' or card == 'gold':
-        return 1
-    return 0
-
-def drop_district_info(d, info):
-    d = d.drop([
-        'name_' + info, 'region_' + info, 'population_' + info,
-        'muni_under499_' + info, 'muni_500_1999_' + info,
-        'muni_2000_9999_' + info, 'muni_over10000_' + info,
-        'n_cities_' + info, 'ratio_urban_' + info,
-        'avg_salary_' + info, 'unemployment_95_' + info,
-        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
-        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
-    ], axis = 1)
-    return d
-
 def normalize_region(df, info):
-    dev, _ = get_processed_data()
+    dev, _ = get_raw_data()
     # The percentages of loans paid per region is calculated based on the dev dataset
     
     name = f'name_{info}'
@@ -467,6 +447,26 @@ def normalize_region(df, info):
     df = pd.merge(left=df, right=region_partials, on=region)
     df = df.drop([name, region], axis=1)
     return df
+
+def convert_gender_to_int(x):
+    return 1 if x == 'Female' else 0
+
+def convert_card_to_int(card):
+    if card == 'junior' or card == 'classic' or card == 'gold':
+        return 1
+    return 0
+
+def drop_district_info(d, info):
+    d = d.drop([
+        'name_' + info, 'region_' + info, 'population_' + info,
+        'muni_under499_' + info, 'muni_500_1999_' + info,
+        'muni_2000_9999_' + info, 'muni_over10000_' + info,
+        'n_cities_' + info, 'ratio_urban_' + info,
+        'avg_salary_' + info, 'unemployment_95_' + info,
+        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
+        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
+    ], axis = 1)
+    return d
 
 def process_data(d, drop_loan_date=True):
     ### Here are some ideas of what could be done
@@ -515,7 +515,7 @@ def process_data(d, drop_loan_date=True):
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
     # Normalize card information
-    d['card'] = d['type'].apply(convert_card_type)
+    d['card'] = d['type'].apply(convert_card_to_int)
     d = d.drop('type', axis=1)
 
     # Theory: dates are not important, but maybe ages are
@@ -541,7 +541,7 @@ def process_data(d, drop_loan_date=True):
     d = d.drop('gender_disponent', axis=1)
 
     # Normalize the owner's gender
-    d['gender_owner'] = d['gender_owner'].apply(convert_gender)
+    d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
 
     # Theory: Only 1 district will affect the loan
     d = drop_district_info(d, 'disponent')
@@ -559,12 +559,12 @@ def process_data(d, drop_loan_date=True):
 
     return d
 
-def get_data():
-    (d, c) = get_processed_data()
+def get_full_processed_data():
+    (d, c) = get_raw_data()
     return (process_data(d), process_data(c))
 
-def get_data_with_dates():
-    (d, c) = get_processed_data()
+def get_full_processed_data_with_dates():
+    (d, c) = get_raw_data()
     return (process_data(d, False), process_data(c, False))
 
 def select(d, columns):
@@ -574,7 +574,7 @@ def select(d, columns):
     return new
 
 def main():
-    d, _ = get_data()
+    d, _ = get_full_processed_data()
     # print(d.dtypes)
     print(len(d.dtypes))
 
