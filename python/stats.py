@@ -463,5 +463,6 @@ def main():
 
 if __name__ == '__main__':
     cwd = os.getcwd()
-    os.chdir(cwd + "\python")
+    if cwd.split('\\')[-1] != 'python':
+        os.chdir(cwd + "\python")
     main()

@@ -217,7 +217,7 @@ def get_improved_transaction_data(): # Transactions (improved)
 
 ### Merged Tables ###
 
-def get_loan_account_district_data(remove_non_numeric=False): # Loan, Account, District
+def merge_loan_account_district(remove_non_numeric=False): # Loan, Account, District
     loan_dev, loan_competition = get_loan_data()
 
     account = get_account_data()
@@ -234,7 +234,7 @@ def get_loan_account_district_data(remove_non_numeric=False): # Loan, Account, D
 
     return dev, competition
 
-def get_account_owner_data(): # Client, Disposition(owner)
+def merge_client_dispowner(): # Client, Disposition(owner)
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_owners = disposition.loc[disposition['type'] == 'OWNER']
@@ -242,10 +242,10 @@ def get_account_owner_data(): # Client, Disposition(owner)
     owners = pd.merge(left=disposition_owners, right=clients, on='client_id', how='left')
     return owners
 
-def get_loan_client_owner_data(): # Loan, Account, Client, Disposition(owner)
+def merge_loan_account_client_dispowner(): # Loan, Account, Client, Disposition(owner)
     loan_dev, loan_comp = get_loan_data()
     account = get_account_data()
-    owners = get_account_owner_data()
+    owners = merge_client_dispowner()
 
     loan_dev  =  loan_dev.rename(columns={'date': 'date_loan'})
     loan_comp = loan_comp.rename(columns={'date': 'date_loan'})
@@ -257,7 +257,7 @@ def get_loan_client_owner_data(): # Loan, Account, Client, Disposition(owner)
     loan_owner_comp = pd.merge(left=loan_comp, right=account_owner, on='account_id', how='left')
     return (loan_owner_dev, loan_owner_comp)
 
-def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner)
+def merge_loan_account_client_dispowner_districtaccount_districtowner(): # Loan, Account, Client, Disposition(owner), District(account), District(owner)
     district = get_district_data()
     account_district = district.rename(columns={
         'code' : 'code_account',
@@ -295,7 +295,7 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
         'crimes_95_per_1000' : 'crimes_95_per_1000_owner',
         'crimes_96_per_1000' : 'crimes_96_per_1000_owner',
     })
-    loan_owner_dev, loan_owner_comp = get_loan_client_owner_data()
+    loan_owner_dev, loan_owner_comp = merge_loan_account_client_dispowner()
 
     dev = pd.merge(left=loan_owner_dev, right=account_district, left_on='district_id_account', right_on='code_account', how='left')
     dev = pd.merge(left=dev, right=client_district, left_on='district_id_owner', right_on='code_owner', how='left')
@@ -305,8 +305,8 @@ def get_loan_client_owner_district_data(): # Loan, Account, Client, Disposition(
 
     return (dev, comp)
 
-def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
-    loan_owner_district_dev, loan_owner_district_comp = get_loan_client_owner_district_data()
+def merge_loan_account_client_dispowner_districtaccount_districtowner_card(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
+    loan_owner_district_dev, loan_owner_district_comp = merge_loan_account_client_dispowner_districtaccount_districtowner()
     card = get_card_data()
 
     dev  = pd.merge(left=loan_owner_district_dev , right=card , on='disp_id', how='left')
@@ -314,23 +314,19 @@ def get_loan_client_owner_district_and_card_data(): # Loan, Account, Client, Dis
     
     return (dev, comp)
 
-def get_account_disponent_data(): # Client, Disposition(disponent)
+def merge_client_dispdisponent_district(): # Client, Disposition(disponent), District(disponent)
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_disponents = disposition.loc[disposition['type'] == 'DISPONENT']
     disposition_disponents = disposition_disponents.drop(['type'], axis=1)
     disponents = pd.merge(left=disposition_disponents, right=clients, on='client_id', how='left')
-    return disponents
-
-def get_account_disponent_district_data(): # Client, Disposition(disponent), District(disponent)
-    disponent = get_account_disponent_data()
     district = get_district_data()
-    disponent_district = pd.merge(left=disponent, right=district, left_on='district_id', right_on='code', how='left')
+    disponent_district = pd.merge(left=disponents, right=district, left_on='district_id', right_on='code', how='left')
     return disponent_district
 
-def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
-    loan_dev, loan_comp = get_loan_client_owner_district_and_card_data()
-    disponent = get_account_disponent_district_data()
+def merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
+    loan_dev, loan_comp = merge_loan_account_client_dispowner_districtaccount_districtowner_card()
+    disponent = merge_client_dispdisponent_district()
     
     disponent = disponent.rename(columns={
         'code' : 'code_disponent',
@@ -372,8 +368,8 @@ def get_loan_client_data(): # Loan, Account, Client, Disposition(owner), Distric
     
     return (dev, comp)
 
-def get_all_data():
-    (dev, comp) = get_loan_client_data()
+def merge_all():
+    (dev, comp) = merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent()
     transactions = get_improved_transaction_data()
     
     dev  = pd.merge(left=dev , right=transactions, on='account_id')
@@ -382,7 +378,7 @@ def get_all_data():
     return (dev, comp)
 
 def save_raw_data():
-    d, c = get_all_data()
+    d, c = merge_all()
     os.makedirs('../data/processed/', exist_ok=True)
     d.to_csv('../data/processed/dev.csv', index=False)
     c.to_csv('../data/processed/comp.csv', index=False)
@@ -580,4 +576,7 @@ def main():
 
 
 if __name__ == '__main__':
+    cwd = os.getcwd()
+    if cwd.split('\\')[-1] != 'python':
+        os.chdir(cwd + "\python")
     main()
