@@ -572,8 +572,16 @@ def main():
 
 def set_working_directory():
     cwd = os.getcwd()
-    if cwd.split('\\')[-1] != 'python':
-        os.chdir(cwd + "\python")
+    ubuntu_split = cwd.split('/')
+    windows_split = cwd.split('\\')
+    if len(ubuntu_split) == 1:
+        # Windows OS
+        if windows_split[-1] != 'python':
+            os.chdir(cwd + '\python')
+    else:
+        # Ubuntu OS
+        if ubuntu_split[-1] != 'python':
+            os.chdir(cwd + '/python')
 
 if __name__ == '__main__':
     set_working_directory()
