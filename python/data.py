@@ -531,28 +531,29 @@ def process_data(d, drop_loan_date=True):
     # Since the date_loan was used to normalize the dates, it is no longer needed
     if drop_loan_date:
         d = d.drop('date_loan', axis=1)
+        pass
     
     # Theory: ages are not normalized so maybe they can be a problem (?)
-    d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
+    #d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
     
     # Theory: number of transactions is not normalized so maybe it can be a problem (?)
-    d = d.drop('n_transactions', axis=1)
+    #d = d.drop('n_transactions', axis=1)
 
-    # Theory: The disponent doesn't affect the status of the loan
-    d = d.drop('gender_disponent', axis=1)
+    # Theory: The disponent gender doesn't affect the status of the loan, maybe the disponent does
+    #d = d.drop('gender_disponent', axis=1)
 
     # Normalize the owner's gender
     d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
 
     # Theory: Only 1 district will affect the loan
-    d = drop_district_info(d, 'disponent')
-    d = drop_district_info(d, 'owner')
+    #d = drop_district_info(d, 'disponent')
+    #d = drop_district_info(d, 'owner')
 
     # Normalize district
     d = normalize_district(d, 'account')
 
     # Population is a big number with no normalization, is it a problem?
-    d = d.drop('population_account', axis=1)
+    #d = d.drop('population_account', axis=1)
 
     # Normalize Region (from text to float)
     d = normalize_region(d, 'account')
