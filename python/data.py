@@ -413,14 +413,19 @@ def get_ages(df, creation_dates, loan_date):
         df[creation_date] = df[creation_date].floordiv(10000)
     return df
 
-def normalize_district(df, muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities):
+def normalize_district(df, info):
+    # Normalize Urban Ratio
+    df[f'ratio_urban_{info}'] = df[f'ratio_urban_{info}'].apply(lambda x: x/100)
+
     # Obtain total municipalities
+    municipalities = [f'muni_under499_{info}', f'muni_500_1999_{info}', f'muni_2000_9999_{info}', f'muni_over10000_{info}']
     df['total_muni'] = 0
-    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000]:
+    for column in municipalities:
         df['total_muni'] = df['total_muni'].add(df[column])
     
     # Normalize municipalities
-    for column in [muni_under499, muni_500_1999, muni_2000_9999, muni_over10000, n_cities]:
+    municipalities.append(f'n_cities_{info}')
+    for column in municipalities:
         df[column] = df[column].divide(df['total_muni'])
 
     return df.drop('total_muni', axis=1)
@@ -544,8 +549,7 @@ def process_data(d, drop_loan_date=True):
     d = drop_district_info(d, 'owner')
 
     # Normalize district
-    d = normalize_district(d, 'muni_under499_account', 'muni_500_1999_account',
-            'muni_2000_9999_account', 'muni_over10000_account', 'n_cities_account')
+    d = normalize_district(d, 'account')
 
     # Population is a big number with no normalization, is it a problem?
     d = d.drop('population_account', axis=1)

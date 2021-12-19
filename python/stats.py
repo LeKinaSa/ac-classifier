@@ -110,12 +110,20 @@ def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
     
     correlation_analysis(c, annot, decimal_places, 'Correlation Graph (competition data)')
 
-def scatter_plot(d, x, y):
-    sb.scatterplot(data=d, x=x, y=y, hue='status')
+def scatter_plot(d, x, y, hue='status'):
+    sb.scatterplot(data=d, x=x, y=y, hue=hue)
     plt.show()
 
-def count_plot(d, x):
-    sb.histplot(data=d, x=x, hue='status', multiple='fill')
+def count_plot(d, x, hue='status'):
+    sb.histplot(data=d, x=x, hue=hue, multiple='fill')
+    plt.show()
+
+def violin_plot(d, x, y):
+    sb.violinplot(data=d, x=x, y=y)
+    plt.show()
+
+def box_plot(d, x, y):
+    sb.boxplot(data=d, x=x, y=y)
     plt.show()
 
 ####################################################################################################
