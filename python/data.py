@@ -457,6 +457,9 @@ def convert_card_to_int(card):
         return 1
     return 0
 
+def convert_disponent_to_int(x):
+    return 0 if x == 'None' else 1
+
 def drop_district_info(d, info):
     d = d.drop([
         'name_' + info, 'region_' + info, 'population_' + info,
@@ -540,6 +543,8 @@ def process_data(d, drop_loan_date=True):
     #d = d.drop('n_transactions', axis=1)
 
     # Theory: The disponent gender doesn't affect the status of the loan, maybe the disponent does
+    d['gender_disponent'].fillna('None', inplace=True)
+    d['disponent'] = d['gender_disponent'].apply(lambda x: convert_disponent_to_int(x))
     #d = d.drop('gender_disponent', axis=1)
 
     # Normalize the owner's gender
