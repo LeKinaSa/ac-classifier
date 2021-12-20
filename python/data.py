@@ -445,20 +445,23 @@ def normalize_region(df, info):
     region_partials[region_non_paid] = region_partials['non_paid'].divide(region_partials['total'])
     region_partials  = region_partials.drop(['non_paid', 'total'], axis=1)
     
-    df = pd.merge(left=df, right=region_partials, on=region)
+    df = pd.merge(left=df, right=region_partials, on=region, how='left')
     df = df.drop([name, region], axis=1)
     return df
 
 def convert_gender_to_int(x):
     return 1 if x == 'Female' else 0
 
+def convert_disponent_gender_to_int(x):
+    return -1 if x == 'None' else convert_gender_to_int(x)
+
+def convert_disponent_to_int(x):
+    return 0 if x == -1 else 1
+
 def convert_card_to_int(card):
     if card == 'junior' or card == 'classic' or card == 'gold':
         return 1
     return 0
-
-def convert_disponent_to_int(x):
-    return 0 if x == 'None' else 1
 
 def drop_district_info(d, info):
     d = d.drop([
@@ -542,25 +545,30 @@ def process_data(d, drop_loan_date=True):
     # Theory: number of transactions is not normalized so maybe it can be a problem (?)
     #d = d.drop('n_transactions', axis=1)
 
+    # Normalize the owner's gender and disponent's gender
+    d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
+    d['gender_disponent'] = d['gender_disponent'].apply(convert_disponent_gender_to_int)
+
     # Theory: The disponent gender doesn't affect the status of the loan, maybe the disponent does
     d['gender_disponent'].fillna('None', inplace=True)
-    d['disponent'] = d['gender_disponent'].apply(lambda x: convert_disponent_to_int(x))
+    d['disponent'] = d['gender_disponent'].apply(convert_disponent_to_int)
     #d = d.drop('gender_disponent', axis=1)
-
-    # Normalize the owner's gender
-    d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
 
     # Theory: Only 1 district will affect the loan
     #d = drop_district_info(d, 'disponent')
     #d = drop_district_info(d, 'owner')
 
     # Normalize district
+    d = normalize_district(d, 'disponent')
+    d = normalize_district(d, 'owner')
     d = normalize_district(d, 'account')
 
     # Population is a big number with no normalization, is it a problem?
     #d = d.drop('population_account', axis=1)
 
     # Normalize Region (from text to float)
+    d = normalize_region(d, 'disponent')
+    d = normalize_region(d, 'owner')
     d = normalize_region(d, 'account')
 
     return d
@@ -579,6 +587,7 @@ def main():
     d, _ = get_data()
     # print(d.dtypes)
     print(len(d.dtypes))
+    print(len(d))
 
 def set_working_directory():
     cwd = os.getcwd()
