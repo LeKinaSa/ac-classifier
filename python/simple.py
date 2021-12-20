@@ -76,7 +76,7 @@ def model_learning_and_classification_without_grid_search(dev, competition, esti
 
 def main():
     # Data
-    dev, competition = data.get_data()
+    dev, competition = data.get_loans_data()
     selected_columns = [
         'loan_id', 'status',
         #'gender_owner',
@@ -93,28 +93,28 @@ def main():
     
     # Classifiers
     classifiers = {
-        # 'RFC' : (
-        #     RandomForestClassifier(),
-        #     {
-        #         'n_estimators': [50, 100, 150],
-        #         'criterion': ['gini', 'entropy'],
-        #         'class_weight': ['balanced', 'balanced_subsample', None],
-        #     }
-        # ),
-        'ABC' : (
-            AdaBoostClassifier(),
+        'RFC' : (
+            RandomForestClassifier(),
             {
-                'algorithm': ['SAMME', 'SAMME.R'],
-                'base_estimator': [
-                    #DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
-                    RandomForestClassifier(class_weight='balanced_subsample', criterion='gini', n_estimators=100),
-                    #SVC(probability=True),
-                    #GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
-                    LogisticRegression(),
-                ],
-                'n_estimators': [25, 50, 75],
+                'n_estimators': [50, 100, 150],
+                'criterion': ['gini', 'entropy'],
+                'class_weight': ['balanced', 'balanced_subsample', None],
             }
         ),
+        # 'ABC' : (
+        #     AdaBoostClassifier(),
+        #     {
+        #         'algorithm': ['SAMME', 'SAMME.R'],
+        #         'base_estimator': [
+        #             #DecisionTreeClassifier(class_weight=None, criterion='gini', max_depth=10),
+        #             RandomForestClassifier(class_weight='balanced_subsample', criterion='gini', n_estimators=100),
+        #             #SVC(probability=True),
+        #             #GradientBoostingClassifier(criterion='friedman_mse', loss='deviance', max_depth=3, max_features='sqrt'),
+        #             LogisticRegression(),
+        #         ],
+        #         'n_estimators': [25, 50, 75],
+        #     }
+        # ),
         # 'LGR': (
         #     LogisticRegression(),
         #     {

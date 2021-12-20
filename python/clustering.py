@@ -8,7 +8,7 @@ import data
 from data import set_working_directory
 
 def main():
-    d, c = data.get_data()
+    d, c = data.get_loans_data()
     d = d.append(c).drop('frequency', axis=1)
     
     clustering_groups = {
@@ -16,7 +16,7 @@ def main():
         'account': ['card', 'disponent'],
         'district': ['ratio_urban_account', 'avg_salary_account', 'crimes_95_per_1000_account', 'unemployment_95_account', 'entrepreneurs_per_1000_account'],
         'balance': ['avg_daily_balance', 'balance_deviation', 'high_balance', 'negative_balance'],
-        'all': None,
+        #'all': None,
     }
     clustering_techniques = {
         #'DBSCAN': DBSCAN(eps=5, min_samples=5),

@@ -131,17 +131,17 @@ def box_plot(d, x, y):
 def main(): 
     #### Status Pie Chart
     if status_pie_chart:
-        d, _ = data.get_data()
+        d, _ = data.get_loans_data()
         d = d.groupby('status').size()
         plt.pie(d)
         plt.show()
 
     #### General Statistics
     if general_statistics:
-        dev, _ = data.get_data()
+        dev, _ = data.get_loans_data()
         print(dev.nunique())
         print(dev.dtypes)
-        dev, comp = data.get_raw_data()
+        dev, comp = data.get_raw_loans_data()
         print(dev['date_loan'].head())
         print(comp['date_loan'].head())
 
@@ -177,7 +177,7 @@ def main():
     #### Loan Amounts, and Distribution of Amounts per Status
     if loan_amounts:
         # Loan Amounts
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         g = sb.histplot(data=dev, x='amount')
         g.set(
             title='Distribution of Loan Amounts',
@@ -206,7 +206,7 @@ def main():
 
     # Percentage of Loans Paid per Region and Frequency
     if percentage_paid_loans:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         dev['paid'] = dev['status'].apply(lambda x: True if x == 0 else False)
 
         # Paid Loans per Region
@@ -277,6 +277,7 @@ def main():
         sb.countplot(data=trans, x='bank')
         plt.show()
 
+        dev, comp = data.get_loan_data()
         sb.countplot(data=dev, x='account_id') # Check the number of loans per account
         plt.show()
 
@@ -309,7 +310,7 @@ def main():
 
     # Salary and Daily Balance
     if salary_daily_balance:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
@@ -317,7 +318,7 @@ def main():
 
     # Salary and Daily Balance Normalized
     if salary_daily_balance_norm:
-        dev, _ = data.get_data()
+        dev, _ = data.get_loans_data()
         sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
@@ -326,7 +327,7 @@ def main():
     # Districts
     if munis_per_district:
         district_data = data.get_district_data()
-        district_data = data.normalize_district(district_data, 'muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000', 'n_cities')
+        district_data = data.normalize_district(district_data, '')
         d = district_data.groupby('region').mean().reset_index()
         d = data.select(d, ['region', 'muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000'])
         sb.set()
@@ -338,7 +339,7 @@ def main():
 
     #### Transactions Amount and Deviation
     if transactions_amount_and_deviation:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         sb.scatterplot(data=dev, x='avg_amount', y='balance_deviation', hue='status').set(title='Transaction Amount and Balance Deviation Comparison', xlabel='Transaction Amount', ylabel='Balance Deviation')
         plt.xscale('log')
         plt.yscale('log')
@@ -363,12 +364,12 @@ def main():
 
     #### All (Correlation)
     if all_corr:
-        d, _ = data.get_raw_data()
+        d, _ = data.get_raw_loans_data()
         correlation_analysis(d) # This one is too big and it is not good for analyzing
 
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
     if analyze_by_status:
-        d, c = data.get_data()
+        d, c = data.get_loans_data()
         selected = [
             'loan_id', 'status',
             'duration',
@@ -381,7 +382,7 @@ def main():
 
     #### All with Some Processing (Correlation)
     if all_with_processing:
-        d, _ = data.get_raw_data()
+        d, _ = data.get_raw_loans_data()
         
         d['type'].fillna('None', inplace=True)
         d['card'] = d['type'].apply(lambda x: 0 if x == 'None' else 1)
@@ -437,7 +438,7 @@ def main():
     
     #### All in Parts (Correlation)
     if parts:
-        d, _ = data.get_data()
+        d, _ = data.get_loans_data()
         d = d.drop(['loan_id'], axis=1)
         columns = list(d.drop('status', axis=1).columns)
         for i in range(0, len(columns), 5):
@@ -447,8 +448,8 @@ def main():
 
     #### All possible scatter plots
     if all_possible_scatter:
-        d, _ = data.get_raw_data()
-        # d, _ = data.get_data()
+        d, _ = data.get_raw_loans_data()
+        d, _ = data.get_loans_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(list(combinations(columns, 2)))
         answer = input(f'Show all possible scatter plots ({n}) [y/N]? ').lower()
@@ -458,8 +459,8 @@ def main():
     
     #### All possible count plots
     if all_possible_count:
-        d, _ = data.get_raw_data()
-        # d, _ = data.get_data()
+        d, _ = data.get_raw_loans_data()
+        d, _ = data.get_loans_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(columns)
         answer = input(f'Show all possible count plots ({n}) [y/N]? ').lower()
