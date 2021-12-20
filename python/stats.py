@@ -21,7 +21,7 @@ percentage_paid_loans             = False
 date                              = False
 card_graphs                       = False
 transactions_graphs               = False
-owners_graphs                     = False
+owners_graphs                     = True
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -190,6 +190,13 @@ def main():
         )
         plt.show()
 
+        g = sb.scatterplot(data=dev, x='payments', y='amount', hue='duration')
+        g.set(
+            xlabel='Payments',
+            ylabel='Amount',
+        )
+        plt.show()
+
         # Loan Amounts per Status
         g = sb.boxplot(data=dev, x='status', y='amount')
         g.set_xticklabels(['Paid', 'Unpaid'])
@@ -289,10 +296,16 @@ def main():
         owners = data.merge_client_dispowner()
         loan_owner_client_dev, loan_owner_client_comp = data.merge_loan_account_client_dispowner()
 
-        sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
-        plt.show()
+        # sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
+        # plt.show()
 
-        sb.countplot(data=owners, x='gender')
+        g = sb.countplot(data=owners, x='gender', palette=['violet', 'deepskyblue'])
+        g.bar_label(g.containers[0])
+        g.set(
+            title='Gender Distribution',
+            xlabel='Gender',
+            ylabel='Count',
+        )
         plt.show()
 
         sb.countplot(data=loan_owner_client_dev , x='gender')
