@@ -7,9 +7,9 @@ import os
 import data
 from data import set_working_directory
 
-####################################################################################################
-####################        Global Variables for showing only some graphs       ####################
-####################################################################################################
+################################################################################
+##########        Global Variables for showing only some graphs       ##########
+################################################################################
 # General
 status_pie_chart   = True
 general_statistics = True
@@ -37,7 +37,7 @@ parts                = False
 # All Possible Scatter and Count Plots -> keep False
 all_possible_scatter = False
 all_possible_count   = False
-####################################################################################################
+################################################################################
 
 def remove_dups(lst):
     return sorted(set(lst), key=lambda x: lst.index(x))
@@ -126,7 +126,7 @@ def box_plot(d, x, y):
     sb.boxplot(data=d, x=x, y=y)
     plt.show()
 
-####################################################################################################
+################################################################################
 
 def main(): 
     #### Status Pie Chart
@@ -138,12 +138,16 @@ def main():
 
     #### General Statistics
     if general_statistics:
-        dev, _ = data.get_data()
-        print(dev.nunique())
-        print(dev.dtypes)
         dev, comp = data.get_raw_data()
-        print(dev['date_loan'].head())
-        print(comp['date_loan'].head())
+        dev['year'] = dev['date_loan'] // 10000
+        comp['year'] = comp['date_loan'] // 10000
+
+        print('--------- DEVELOPMENT ---------')
+        print(dev[['amount', 'duration']].describe())
+        print(dev.groupby('year')[['amount', 'duration', 'payments']].mean())
+        print('\n--------- COMPETITION ---------')
+        print(comp[['amount', 'duration']].describe())
+        print(comp.groupby('year')[['amount', 'duration', 'payments']].mean())
 
     #### District Graphs
     if district_scatter_plots:
