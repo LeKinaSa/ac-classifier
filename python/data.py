@@ -97,7 +97,7 @@ def get_client_data(): # Client (client)
 
 def get_disposition_data(): # Disposition (disp)
     disposition = pd.read_csv('../data/disp.csv', sep=';', dtype={
-        'distp_id': int,
+        'disp_id': int,
         'client_id': int,
         'account_id': int,
         'type': 'category',

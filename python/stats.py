@@ -308,13 +308,32 @@ def main():
         )
         plt.show()
 
-        sb.countplot(data=loan_owner_client_dev , x='gender')
+        for df in [loan_owner_client_dev, loan_owner_client_comp]:
+            for row in ['date_loan', 'birthday']:
+                df[row] = pd.to_datetime(df[row].apply(data.get_readable_date))
+
+            df['age_loan'] = df.apply(
+                lambda row: int((row['date_loan'] - row['birthday']).days / 365.2425),
+                axis=1
+            )
+
+        g = sb.histplot(data=loan_owner_client_dev, x='age_loan', bins=15)
+        g.set(
+            title='Age Distribution (Dev)',
+            xlabel='Age',
+            ylabel='Count',
+        )
         plt.show()
 
-        sb.countplot(data=loan_owner_client_comp, x='gender')
+        sb.countplot(data=loan_owner_client_dev , x='gender', palette=['violet', 'deepskyblue'])
         plt.show()
 
-        sb.countplot(data=loan_owner_client_dev, x='status', hue='gender')
+        sb.countplot(data=loan_owner_client_comp, x='gender', palette=['violet', 'deepskyblue'])
+        plt.show()
+
+        g = sb.countplot(data=loan_owner_client_dev, x='status', hue='gender', palette=['violet', 'deepskyblue'])
+        for container in g.containers:
+            g.bar_label(container)
         plt.show()
 
         loan_owner_client_dev['same_district'] = loan_owner_client_dev['district_id_account'] == loan_owner_client_dev['district_id_owner']
