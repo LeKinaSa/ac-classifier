@@ -8,14 +8,13 @@ import data
 from data import set_working_directory
 
 def main():
-    d, c = data.get_loans_data()
-    d = d.append(c).drop('frequency', axis=1)
-    
+    clients = data.get_clients_data()
+
     clustering_groups = {
-        'client': ['gender_owner', 'age_owner'],
+        'client': ['gender_owner', 'birthday_owner'],
         'account': ['card', 'disponent'],
         'district': ['ratio_urban_account', 'avg_salary_account', 'crimes_95_per_1000_account', 'unemployment_95_account', 'entrepreneurs_per_1000_account'],
-        'balance': ['avg_daily_balance', 'balance_deviation', 'high_balance', 'negative_balance'],
+        #'balance': ['avg_daily_balance', 'balance_deviation', 'high_balance', 'negative_balance'],
         #'all': None,
     }
     clustering_techniques = {
@@ -26,9 +25,9 @@ def main():
 
     for group in clustering_groups:
         to_cluster = clustering_groups[group]
-        fit_clustering = d
+        fit_clustering = clients
         if to_cluster != None:
-            fit_clustering = data.select(d, to_cluster)
+            fit_clustering = data.select(clients, to_cluster)
         for technique in clustering_techniques:
             clustering_technique = clustering_techniques[technique]
             cluster = f'{group} - {technique}'
@@ -37,7 +36,7 @@ def main():
             # Apply Clustering
             clustering_technique.fit(fit_clustering)
             labels = clustering_technique.labels_
-            d['cluster'] = labels
+            clients['cluster'] = labels
 
             # Show Results of Clustering
             #print(cluster)

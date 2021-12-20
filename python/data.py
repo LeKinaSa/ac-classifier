@@ -509,6 +509,7 @@ def merge_clients():
     clients = join_cards(clients)
     # Account
     clients = merge_tables(clients, account, 'account_id')
+    clients = clients.rename(columns={'date':'account_creation'})
     # District(Account)
     clients = merge_tables(clients, district, 'district_id').drop('district_id', axis=1)
     # Transactions
@@ -731,6 +732,52 @@ def get_loans_data():
     (d, c) = get_raw_loans_data()
     return (process_loan_data(d), process_loan_data(c))
 
+def get_clients_data():
+    clients = get_raw_clients_data()
+
+    # 96 Values
+    clients = normalize_dict(clients, {
+        'unemployment_96_account'      : 'unemployment_95_account',
+        'unemployment_96_owner'        : 'unemployment_95_owner',
+        'unemployment_96_disponent'    : 'unemployment_95_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
+        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
+    })
+    clients = clients.rename(columns={
+        'unemployment_96_account'      : 'unemployment_evolution_account',
+        'unemployment_96_owner'        : 'unemployment_evolution_owner',
+        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
+        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
+    })
+
+    # Card (text to int)
+    clients['card'] = clients['card'].apply(convert_card_to_int)
+    
+    # Gender (text to int)
+    clients['gender_owner'    ] = clients['gender_owner'    ].apply(convert_gender_to_int)
+    clients['gender_disponent'] = clients['gender_disponent'].apply(convert_disponent_gender_to_int)
+
+    # Disponent
+    clients['disponent'] = clients['gender_disponent'].apply(convert_disponent_to_int)
+
+    # Municipalities (int value to percentage)
+    clients = normalize_district(clients, 'disponent')
+    clients = normalize_district(clients, 'owner')
+    clients = normalize_district(clients, 'account')
+
+    # Region (text to float)
+    clients = normalize_region(clients, 'disponent')
+    clients = normalize_region(clients, 'owner')
+    clients = normalize_region(clients, 'account')
+
+    # Remove column of all NaN
+    clients = clients.drop('region_non_paid_partial_disponent', axis=1)
+
+    return clients
+
 def select(d, columns):
     new = pd.DataFrame()
     for c in columns:
@@ -751,11 +798,11 @@ def set_working_directory():
             os.chdir(cwd + '/python')
 
 def main():
-    d, _ = get_loans_data()
-    print(len(d.dtypes))
-    print(len(d))
-    clients = get_raw_clients_data()
-    print(clients.columns)
+    d, c = get_loans_data()
+    print('Loans Development: [', len(d), 'x', len(d.columns), ']')
+    print('Loans Competition: [', len(c), 'x', len(c.columns), ']')
+    clients = get_clients_data()
+    print('Clients: [', len(clients), 'x', len(clients.columns), ']')
 
 if __name__ == '__main__':
     set_working_directory()
