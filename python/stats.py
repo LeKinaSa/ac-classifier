@@ -3,7 +3,6 @@ import seaborn as sb
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import combinations
-import os
 import data
 from data import set_working_directory
 
@@ -11,8 +10,8 @@ from data import set_working_directory
 ####################        Global Variables for showing only some graphs       ####################
 ####################################################################################################
 # General
-status_pie_chart   = True
-general_statistics = True
+status_pie_chart   = False
+general_statistics = False
 # First Contact with the Data
 district_scatter_plots            = False
 loan_amounts                      = False
@@ -22,6 +21,8 @@ date                              = False
 card_graphs                       = False
 transactions_graphs               = False
 owners_graphs                     = False
+district_client_vs_account        = False
+owners_age                        = True
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -307,6 +308,60 @@ def main():
         loan_owner_districts, _ = data.merge_loan_account_client_dispowner_districtaccount_districtowner()
         loan_owner_districts['same_region'] = loan_owner_districts['region_account'] == loan_owner_districts['region_owner']
         print('Region Owner == Region Account:', loan_owner_districts['same_region'].nunique())
+
+    #### Comparison between district owner/disponent and district account
+    def check_districts(row):    
+        account   = row['name_account'  ]
+        owner     = row['name_owner'    ]
+        disponent = row['name_disponent']
+
+        if disponent is not str: # NaN
+            return account != owner
+        if owner != disponent:
+            print('owner != disponent')
+        return account != owner and account != disponent
+
+    if district_client_vs_account:
+        clients = data.get_raw_clients_data()
+        clients = data.select(clients, ['name_owner', 'name_disponent', 'name_account'])
+        clients['inconsistent'] = clients.apply(check_districts, axis=1)
+        print('Clients with the same district as the account:   ', len(clients[clients['inconsistent'] == False]))
+        print('Clients with different district from the account:', len(clients[clients['inconsistent'] == True ]))
+        #sb.countplot(data=clients, x='inconsistent').set(title='Clients and account have the same district', xlabel='Different Districts')
+        #plt.show()
+        ax = sb.countplot(data=clients, x='inconsistent', palette=['forestgreen', 'firebrick'])
+        for p in ax.patches:
+            ax.annotate(str(p.get_height()), (p.get_x() + p.get_width()*0.47, p.get_height() + 0.5))
+        plt.title('Clients and account have the same district')
+        plt.xlabel('Different Districts')
+        plt.show()
+
+    #### Owners Age
+    if owners_age:
+        d, c = data.get_raw_loans_data()
+        loans = pd.concat([d, c], verify_integrity=True, ignore_index=True)
+        print('Integrity Verification:', len(d) + len(c), len(loans))
+
+        # Birthday -> Age
+        loans = data.get_ages(loans, ['birthday_owner'], 'date_loan')
+        loans = loans.rename(columns={'birthday_owner' : 'age_owner'})
+        
+        loans = data.select(loans, ['age_owner', 'gender_owner', 'name_owner', 'name_disponent', 'name_account'])
+        loans['inconsistent'] = loans.apply(check_districts, axis=1)
+        
+        false_count = len(loans[loans['inconsistent'] == False])
+        true_count  = len(loans[loans['inconsistent'] == True ])
+        print('Loans from clients with the same district as the account:   ', false_count)
+        print('Loans from clients with different district from the account:', true_count )
+        
+        g = sb.violinplot(data=loans, x='inconsistent', y='age_owner', hue='gender_owner', \
+                          split=True, scale='count', scale_hue=False, linewidth=0.4, cut=0)
+        g.set_xticklabels([f'False ({false_count})', f'True ({true_count})'])
+        plt.title('Clients and account have the same district')
+        plt.xlabel('Different Districts')
+        plt.ylabel('Owner\'s Age')
+        plt.legend(title='Owner\'s Gender', loc='upper right')
+        plt.show()
 
     # Salary and Daily Balance
     if salary_daily_balance:
