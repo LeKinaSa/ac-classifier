@@ -2,6 +2,7 @@
 import os
 import statistics
 import pandas as pd
+import math
 
 ### Base Tables ###
 
@@ -133,7 +134,7 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
     t = pd.merge(left=t, right=t_credit, on='account_id')
     return pd.merge(left=transactions, right=t, on='account_id')
 
-def get_average_daily_balance_data(only_loan): # Transactions (average daily balance)
+def get_average_daily_balance_data(only_loans=True): # Transactions (average daily balance)
     loan_dev, loan_comp = get_loan_data()
     loans = loan_dev.append(loan_comp)
     loans = loans.drop(['loan_id', 'amount', 'duration', 'status'], axis=1)
@@ -151,9 +152,9 @@ def get_average_daily_balance_data(only_loan): # Transactions (average daily bal
         group_df = group[1]
 
         loan = loans.loc[loans['account_id'] == id]
-        if only_loan:
+        if only_loans:
             if len(loan) == 0:
-                continue
+                    continue
             loan_date = loan.iloc[0]['date']
             loan_payments = loan.iloc[0]['payments']
 
@@ -170,7 +171,7 @@ def get_average_daily_balance_data(only_loan): # Transactions (average daily bal
             days += [row1.balance] * interval
             last_transaction_date, last_transaction_balance = row2.date, row2.balance
 
-        if only_loan:
+        if only_loans:
             interval = (loan_date - last_transaction_date).days
             days += [last_transaction_balance] * interval
 
@@ -189,7 +190,7 @@ def get_average_daily_balance_data(only_loan): # Transactions (average daily bal
         else:
             line['negative_balance'] = len(list(filter(lambda x: x < 0, days))) / len(days)
 
-            if only_loan:
+            if only_loans:
                 line['high_balance'] = len(list(filter(lambda x: x < loan_payments, days))) / len(days)
             
             for index in range(len(days) - 1, -1, -1):
@@ -199,7 +200,7 @@ def get_average_daily_balance_data(only_loan): # Transactions (average daily bal
             else:
                 line['last_neg'] = 1
             for index in range(len(days) - 1, -1, -1):
-                if only_loan and days[index] > loan_payments:
+                if only_loans and days[index] > loan_payments:
                     line['last_high'] = (len(days) - index) / len(days)
                     break
             else:
@@ -224,9 +225,9 @@ def get_number_of_transactions_data(): # Transactions (number of transactions)
     transactions = transactions.groupby('account_id')['trans_id'].count().rename('n_transactions').reset_index()
     return transactions
 
-def get_improved_transaction_data(only_loan=True): # Transactions (improved)
+def get_improved_transaction_data(only_loans=True): # Transactions (improved)
     transactions_mean = get_mean_transaction_data()
-    transactions_daily = get_average_daily_balance_data(only_loan)
+    transactions_daily = get_average_daily_balance_data(only_loans)
     n_transactions = get_number_of_transactions_data()
 
     transactions_info = pd.merge(left=transactions_mean, right=n_transactions, on='account_id')
@@ -394,25 +395,174 @@ def merge_all():
 
     return (dev, comp)
 
-def save_raw_data():
+### All Tables Merged ###
+
+def merge_tables(left, right, on):
+    return pd.merge(left=left, right=right, on=on, how='left')
+
+def rename_district_columns(d, info):
+    columns_renamed = {
+        'name'                   : f'name_{info}'                   ,
+        'region'                 : f'region_{info}'                 ,
+        'population'             : f'population_{info}'             ,
+        'muni_under499'          : f'muni_under499_{info}'          ,
+        'muni_500_1999'          : f'muni_500_1999_{info}'          ,
+        'muni_2000_9999'         : f'muni_2000_9999_{info}'         ,
+        'muni_over10000'         : f'muni_over10000_{info}'         ,
+        'n_cities'               : f'n_cities_{info}'               ,
+        'ratio_urban'            : f'ratio_urban_{info}'            ,
+        'avg_salary'             : f'avg_salary_{info}'             ,
+        'unemployment_95'        : f'unemployment_95_{info}'        ,
+        'unemployment_96'        : f'unemployment_96_{info}'        ,
+        'entrepreneurs_per_1000' : f'entrepreneurs_per_1000_{info}' ,
+        'crimes_95_per_1000'     : f'crimes_95_per_1000_{info}'     ,
+        'crimes_96_per_1000'     : f'crimes_96_per_1000_{info}'     ,
+    }
+    return d.rename(columns=columns_renamed)
+
+def rename_client_columns(d, info):
+    columns_renamed = {
+        'birthday': f'birthday_{info}',
+        'gender'  : f'gender_{info}'  ,
+    }
+    return d.rename(columns=columns_renamed)
+
+def combine_cards(row):
+    if not math.isnan(row['card_id_x']):
+        return row['type_x']
+    if not math.isnan(row['card_id_y']):
+        return row['type_y']
+    return 'None'
+
+def join_cards(d):
+    columns = [
+        'card_id_x', 'type_x', 'issued_x',
+        'card_id_y', 'type_y', 'issued_y',
+    ]
+    d['card'] = d.apply(combine_cards, axis=1)
+    d = d.drop(columns, axis=1)
+    return d
+
+def merge_loans():
+    district = get_district_data().rename(columns={'code':'district_id'})
+    account = get_account_data()
+    client = get_client_data()
+    disposition = get_disposition_data()
+    card = get_card_data()
+    transactions = get_improved_transaction_data(True)
+    loans_dev, loans_comp = get_loan_data()
+
+    # Disposition
+    owner     = disposition[disposition['type'] == 'OWNER'    ].drop('type', axis=1)
+    disponent = disposition[disposition['type'] == 'DISPONENT'].drop('type', axis=1)
+    # Card
+    owner     = merge_tables(owner    , card, 'disp_id').drop('disp_id', axis=1)
+    disponent = merge_tables(disponent, card, 'disp_id').drop('disp_id', axis=1)
+    # Client
+    owner     = merge_tables(owner    , client, 'client_id').drop('client_id', axis=1)
+    disponent = merge_tables(disponent, client, 'client_id').drop('client_id', axis=1)
+    # District
+    owner     = merge_tables(owner    , district, 'district_id').drop('district_id', axis=1)
+    disponent = merge_tables(disponent, district, 'district_id').drop('district_id', axis=1)
+    # Rename District Columns
+    owner     = rename_district_columns(owner    , 'owner'    )
+    disponent = rename_district_columns(disponent, 'disponent')
+    district  = rename_district_columns(district , 'account'  )
+    # Rename Client Columns
+    owner     = rename_client_columns  (owner    , 'owner'    )
+    disponent = rename_client_columns  (disponent, 'disponent')
+    # Join Owner and Disponent
+    clients = merge_tables(owner, disponent, 'account_id')
+    # Join Card Columns
+    clients = join_cards(clients)
+    # Account
+    clients = merge_tables(clients, account, 'account_id')
+    # District(Account)
+    clients = merge_tables(clients, district, 'district_id').drop('district_id', axis=1)
+    # Transactions
+    clients = merge_tables(clients, transactions, 'account_id')
+    # Rename Account Creation Date
+    clients = clients.rename(columns={'date': 'date_account'})
+    # Loans
+    dev  = merge_tables(loans_dev , clients, 'account_id').drop('account_id', axis=1)
+    comp = merge_tables(loans_comp, clients, 'account_id').drop('account_id', axis=1)
+
+    return (dev, comp)
+
+def merge_clients():
+    district = get_district_data().rename(columns={'code':'district_id'})
+    account = get_account_data()
+    client = get_client_data()
+    disposition = get_disposition_data()
+    card = get_card_data()
+    transactions = get_improved_transaction_data(False)
+
+    # Disposition
+    owner     = disposition[disposition['type'] == 'OWNER'    ].drop('type', axis=1)
+    disponent = disposition[disposition['type'] == 'DISPONENT'].drop('type', axis=1)
+    # Card
+    owner     = merge_tables(owner    , card, 'disp_id').drop('disp_id', axis=1)
+    disponent = merge_tables(disponent, card, 'disp_id').drop('disp_id', axis=1)
+    # Client
+    owner     = merge_tables(owner    , client, 'client_id').drop('client_id', axis=1)
+    disponent = merge_tables(disponent, client, 'client_id').drop('client_id', axis=1)
+    # District
+    owner     = merge_tables(owner    , district, 'district_id').drop('district_id', axis=1)
+    disponent = merge_tables(disponent, district, 'district_id').drop('district_id', axis=1)
+    # Rename District Columns
+    owner     = rename_district_columns(owner    , 'owner'    )
+    disponent = rename_district_columns(disponent, 'disponent')
+    district  = rename_district_columns(district , 'account'  )
+    # Rename Client Columns
+    owner     = rename_client_columns  (owner    , 'owner'    )
+    disponent = rename_client_columns  (disponent, 'disponent')
+    # Join Owner and Disponent
+    clients = merge_tables(owner, disponent, 'account_id')
+    # Join Card Columns
+    clients = join_cards(clients)
+    # Account
+    clients = merge_tables(clients, account, 'account_id')
+    clients = clients.rename(columns={'date':'account_creation'})
+    # District(Account)
+    clients = merge_tables(clients, district, 'district_id').drop('district_id', axis=1)
+    # Transactions
+    clients = merge_tables(clients, transactions, 'account_id').drop('account_id', axis=1)
+    
+    return clients
+
+def save_raw_loans_data():
     d, c = merge_all()
     os.makedirs('../data/processed/', exist_ok=True)
     d.to_csv('../data/processed/dev.csv', index=False)
     c.to_csv('../data/processed/comp.csv', index=False)
 
+def save_raw_clients_data():
+    clients = merge_clients()
+    os.makedirs('../data/processed/', exist_ok=True)
+    clients.to_csv('../data/processed/clients.csv', index=False)
+
 ### Using the Data Saved ###
 
-def get_raw_data():
+def get_raw_loans_data():
     dev_file  = '../data/processed/dev.csv'
     comp_file = '../data/processed/comp.csv'
 
     if not os.path.exists(dev_file) or not os.path.exists(comp_file):
-        save_raw_data()
+        save_raw_loans_data()
     
     d = pd.read_csv(dev_file)
     c = pd.read_csv(comp_file)
     
     return (d, c)
+
+def get_raw_clients_data():
+    clients_file = '../data/processed/clients.csv'
+
+    if not os.path.exists(clients_file):
+        save_raw_clients_data()
+    
+    clients = pd.read_csv(clients_file)
+    return clients
 
 def normalize(df, columns, normalizer):
     for column in columns:
@@ -431,24 +581,27 @@ def get_ages(df, creation_dates, loan_date):
     return df
 
 def normalize_district(df, info):
+    if info != '':
+        info = '_' + info
+
     # Normalize Urban Ratio
-    df[f'ratio_urban_{info}'] = df[f'ratio_urban_{info}'].apply(lambda x: x/100)
+    df[f'ratio_urban{info}'] = df[f'ratio_urban{info}'].apply(lambda x: x/100)
 
     # Obtain total municipalities
-    municipalities = [f'muni_under499_{info}', f'muni_500_1999_{info}', f'muni_2000_9999_{info}', f'muni_over10000_{info}']
+    municipalities = [f'muni_under499{info}', f'muni_500_1999{info}', f'muni_2000_9999{info}', f'muni_over10000{info}']
     df['total_muni'] = 0
     for column in municipalities:
         df['total_muni'] = df['total_muni'].add(df[column])
     
     # Normalize municipalities
-    municipalities.append(f'n_cities_{info}')
+    municipalities.append(f'n_cities{info}')
     for column in municipalities:
         df[column] = df[column].divide(df['total_muni'])
 
     return df.drop('total_muni', axis=1)
 
 def normalize_region(df, info):
-    dev, _ = get_raw_data()
+    dev, _ = get_raw_loans_data()
     # The percentages of loans paid per region is calculated based on the dev dataset
     
     name = f'name_{info}'
@@ -462,12 +615,18 @@ def normalize_region(df, info):
     region_partials[region_non_paid] = region_partials['non_paid'].divide(region_partials['total'])
     region_partials  = region_partials.drop(['non_paid', 'total'], axis=1)
     
-    df = pd.merge(left=df, right=region_partials, on=region)
+    df = pd.merge(left=df, right=region_partials, on=region, how='left')
     df = df.drop([name, region], axis=1)
     return df
 
 def convert_gender_to_int(x):
     return 1 if x == 'Female' else 0
+
+def convert_disponent_gender_to_int(x):
+    return -1 if x == 'None' else convert_gender_to_int(x)
+
+def convert_disponent_to_int(x):
+    return 0 if x == -1 else 1
 
 def convert_card_to_int(card):
     if card == 'junior' or card == 'classic' or card == 'gold':
@@ -486,7 +645,26 @@ def drop_district_info(d, info):
     ], axis = 1)
     return d
 
-def process_data(d, drop_loan_date=True):
+def get_evolution_values(d):
+    d = normalize_dict(d, {
+        'unemployment_96_account'      : 'unemployment_95_account',
+        'unemployment_96_owner'        : 'unemployment_95_owner',
+        'unemployment_96_disponent'    : 'unemployment_95_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
+        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
+    })
+    d = d.rename(columns={
+        'unemployment_96_account'      : 'unemployment_evolution_account',
+        'unemployment_96_owner'        : 'unemployment_evolution_owner',
+        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
+        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
+    })
+    return d
+
+def process_loan_data(d):
     ### Here are some ideas of what could be done
 
     # Drop ids and disctrict codes (don't drop 'loan_id')
@@ -513,22 +691,7 @@ def process_data(d, drop_loan_date=True):
     d = d.drop('payments', axis=1)
 
     # Normalize 96 values based on 95 and called it evolution
-    d = normalize_dict(d, {
-        'unemployment_96_account'      : 'unemployment_95_account',
-        'unemployment_96_owner'        : 'unemployment_95_owner',
-        'unemployment_96_disponent'    : 'unemployment_95_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
-        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
-    })
-    d = d.rename(columns={
-        'unemployment_96_account'      : 'unemployment_evolution_account',
-        'unemployment_96_owner'        : 'unemployment_evolution_owner',
-        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
-        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
-    })
+    d = get_evolution_values(d)
 
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
@@ -546,32 +709,38 @@ def process_data(d, drop_loan_date=True):
     })
     
     # Since the date_loan was used to normalize the dates, it is no longer needed
-    if drop_loan_date:
-        d = d.drop('date_loan', axis=1)
+    # d = d.drop('date_loan', axis=1)
     
     # Theory: ages are not normalized so maybe they can be a problem (?)
-    d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
+    #d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
     
     # Theory: number of transactions is not normalized so maybe it can be a problem (?)
-    d = d.drop('n_transactions', axis=1)
+    #d = d.drop('n_transactions', axis=1)
 
-    # Theory: The disponent doesn't affect the status of the loan
-    d = d.drop('gender_disponent', axis=1)
-
-    # Normalize the owner's gender
+    # Normalize the owner's gender and disponent's gender
     d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
+    d['gender_disponent'] = d['gender_disponent'].apply(convert_disponent_gender_to_int)
+
+    # Theory: The disponent gender doesn't affect the status of the loan, maybe the disponent does
+    d['gender_disponent'].fillna('None', inplace=True)
+    d['disponent'] = d['gender_disponent'].apply(convert_disponent_to_int)
+    #d = d.drop('gender_disponent', axis=1)
 
     # Theory: Only 1 district will affect the loan
-    d = drop_district_info(d, 'disponent')
-    d = drop_district_info(d, 'owner')
+    #d = drop_district_info(d, 'disponent')
+    #d = drop_district_info(d, 'owner')
 
     # Normalize district
+    d = normalize_district(d, 'disponent')
+    d = normalize_district(d, 'owner')
     d = normalize_district(d, 'account')
 
     # Population is a big number with no normalization, is it a problem?
-    d = d.drop('population_account', axis=1)
+    #d = d.drop('population_account', axis=1)
 
     # Normalize Region (from text to float)
+    d = normalize_region(d, 'disponent')
+    d = normalize_region(d, 'owner')
     d = normalize_region(d, 'account')
 
     return d
@@ -587,7 +756,7 @@ def get_clustering_data():
         return pd.read_csv(clustering_file)
     
     acc = get_account_data()
-    trans = get_improved_transaction_data(only_loan=False)
+    trans = get_improved_transaction_data(only_loans=False)
     dist = get_district_data()
     client = get_client_data()
     disp = get_disposition_data()
@@ -628,14 +797,53 @@ def get_clustering_data():
 
     return df
 
+def get_loans_data():
+    d, c = get_raw_loans_data()
+    return process_loan_data(d), process_loan_data(c)
+
+def get_clients_data():
+    clients = get_raw_clients_data()
+
+    # 96 Values
+    clients = get_evolution_values(clients)
+
+    # Card (text to int)
+    clients['card'] = clients['card'].apply(convert_card_to_int)
+    
+    # Gender (text to int)
+    clients['gender_owner'    ] = clients['gender_owner'    ].apply(convert_gender_to_int)
+    clients['gender_disponent'] = clients['gender_disponent'].apply(convert_disponent_gender_to_int)
+
+    # Disponent
+    clients['disponent'] = clients['gender_disponent'].apply(convert_disponent_to_int)
+
+    # Municipalities (int value to percentage)
+    clients = normalize_district(clients, 'disponent')
+    clients = normalize_district(clients, 'owner')
+    clients = normalize_district(clients, 'account')
+
+    # Region (text to float)
+    clients = normalize_region(clients, 'disponent')
+    clients = normalize_region(clients, 'owner')
+    clients = normalize_region(clients, 'account')
+
+    # Remove column of all NaN
+    clients = clients.drop('region_non_paid_partial_disponent', axis=1)
+
+    return clients
+
 def select(d, columns):
     new = pd.DataFrame()
     for c in columns:
         new[c] = d[c]
     return new
 
-def main():
-    d = get_clustering_data()
+def balance(d):
+    paid   = d[d['status'] == 0]
+    unpaid = d[d['status'] == 1]
+    s_paid = paid.sample(len(unpaid.index), random_state=0)
+    balanced = pd.concat([unpaid, s_paid])
+    return balanced
 
 def set_working_directory():
     cwd = os.getcwd()
@@ -649,6 +857,29 @@ def set_working_directory():
         # Ubuntu OS
         if ubuntu_split[-1] != 'python':
             os.chdir(cwd + '/python')
+
+def main():
+    d, c = get_loans_data()
+    print('Loans Development:', d.shape)
+    print('Loans Competition:', c.shape)
+    clients = get_clients_data()
+    print('Clients:', clients.shape)
+    useless = [
+        'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+        'region_non_paid_partial_disponent', 'population_disponent',
+        'muni_under499_disponent', 'muni_500_1999_disponent',
+        'muni_2000_9999_disponent', 'muni_over10000_disponent',
+        'n_cities_disponent', 'ratio_urban_disponent',
+        'avg_salary_disponent', 'unemployment_95_disponent',
+        'unemployment_evolution_disponent', 'entrepreneurs_per_1000_disponent',
+        'crimes_95_per_1000_disponent', 'crimes_evolution_disponent',
+        'gender_disponent', 'age_disponent', 'age_card',
+    ]
+    (d, c) = (d.drop(useless, axis=1), c.drop(useless, axis=1))
+    d.to_csv('../data/processed/dev_ready.csv', index=False)
+    c.to_csv('../data/processed/comp_ready.csv', index=False)
+    partial = balance(d)
+    partial.to_csv('../data/processed/dev_partial_ready.csv', index=False)
 
 if __name__ == '__main__':
     set_working_directory()

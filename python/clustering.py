@@ -6,6 +6,9 @@ from sklearn.model_selection import ParameterGrid
 
 from sklearn.preprocessing import StandardScaler
 
+import seaborn as sb
+import matplotlib.pyplot as plt
+
 import data
 from data import set_working_directory
 import seaborn as sb

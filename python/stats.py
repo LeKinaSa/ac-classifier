@@ -3,7 +3,6 @@ import seaborn as sb
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import combinations
-import os
 import data
 from data import set_working_directory
 from sklearn.preprocessing import KBinsDiscretizer
@@ -23,6 +22,8 @@ date                              = False
 card_graphs                       = False
 transactions_graphs               = False
 owners_graphs                     = False
+district_client_vs_account        = False
+owners_age                        = False
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -32,7 +33,7 @@ dev_vs_competition                = True
 district             = False
 loan                 = False
 loan_and_trans       = False
-all_corr             = False
+all_corr             = True
 analyze_by_status    = False
 all_with_processing  = False
 parts                = False
@@ -133,7 +134,7 @@ def box_plot(d, x, y):
 def main(): 
     #### Status Pie Chart
     if status_pie_chart:
-        d, _ = data.get_data()
+        d, _ = data.get_loans_data()
         d = d.groupby('status').size()
         plt.pie(d)
         plt.show()
@@ -156,11 +157,7 @@ def main():
         dev, _ = data.merge_loan_account_district()
         dev['date_x'] = pd.to_datetime(dev['date_x'].apply(data.get_birthday_from_birth_number))
 
-        d_maj = dev[dev['status'] == 0]
-        d_min = dev[dev['status'] == 1]
-
-        d_under = d_maj.sample(len(d_min.index), random_state=0)
-        dev = pd.concat([d_under, d_min])
+        dev = data.balance(dev)
 
         sb.scatterplot(data=dev, x='unemployment_95', y='amount', hue='status')
         plt.show()
@@ -183,7 +180,7 @@ def main():
     #### Loan Amounts, and Distribution of Amounts per Status
     if loan_amounts:
         # Loan Amounts
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         g = sb.histplot(data=dev, x='amount')
         g.set(
             title='Distribution of Loan Amounts',
@@ -219,7 +216,7 @@ def main():
 
     # Percentage of Loans Paid per Region and Frequency
     if percentage_paid_loans:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         dev['paid'] = dev['status'].apply(lambda x: True if x == 0 else False)
 
         # Paid Loans per Region
@@ -290,6 +287,7 @@ def main():
         sb.countplot(data=trans, x='bank')
         plt.show()
 
+        dev, comp = data.get_loan_data()
         sb.countplot(data=dev, x='account_id') # Check the number of loans per account
         plt.show()
 
@@ -381,9 +379,63 @@ def main():
         loan_owner_districts['same_region'] = loan_owner_districts['region_account'] == loan_owner_districts['region_owner']
         print('Region Owner == Region Account:', loan_owner_districts['same_region'].nunique())
 
+    #### Comparison between district owner/disponent and district account
+    def check_districts(row):    
+        account   = row['name_account'  ]
+        owner     = row['name_owner'    ]
+        disponent = row['name_disponent']
+
+        if disponent is not str: # NaN
+            return account != owner
+        if owner != disponent:
+            print('owner != disponent')
+        return account != owner and account != disponent
+
+    if district_client_vs_account:
+        clients = data.get_raw_clients_data()
+        clients = data.select(clients, ['name_owner', 'name_disponent', 'name_account'])
+        clients['inconsistent'] = clients.apply(check_districts, axis=1)
+        print('Clients with the same district as the account:   ', len(clients[clients['inconsistent'] == False]))
+        print('Clients with different district from the account:', len(clients[clients['inconsistent'] == True ]))
+        #sb.countplot(data=clients, x='inconsistent').set(title='Clients and account have the same district', xlabel='Different Districts')
+        #plt.show()
+        ax = sb.countplot(data=clients, x='inconsistent', palette=['forestgreen', 'firebrick'])
+        for p in ax.patches:
+            ax.annotate(str(p.get_height()), (p.get_x() + p.get_width()*0.47, p.get_height() + 0.5))
+        plt.title('Clients and account have the same district')
+        plt.xlabel('Different Districts')
+        plt.show()
+
+    #### Owners Age
+    if owners_age:
+        d, c = data.get_raw_loans_data()
+        loans = pd.concat([d, c], verify_integrity=True, ignore_index=True)
+        print('Integrity Verification:', len(d) + len(c), len(loans))
+
+        # Birthday -> Age
+        loans = data.get_ages(loans, ['birthday_owner'], 'date_loan')
+        loans = loans.rename(columns={'birthday_owner' : 'age_owner'})
+        
+        loans = data.select(loans, ['age_owner', 'gender_owner', 'name_owner', 'name_disponent', 'name_account'])
+        loans['inconsistent'] = loans.apply(check_districts, axis=1)
+        
+        false_count = len(loans[loans['inconsistent'] == False])
+        true_count  = len(loans[loans['inconsistent'] == True ])
+        print('Loans from clients with the same district as the account:   ', false_count)
+        print('Loans from clients with different district from the account:', true_count )
+        
+        g = sb.violinplot(data=loans, x='inconsistent', y='age_owner', hue='gender_owner', \
+                          split=True, scale='count', scale_hue=False, linewidth=0.4, cut=0)
+        g.set_xticklabels([f'False ({false_count})', f'True ({true_count})'])
+        plt.title('Clients and account have the same district')
+        plt.xlabel('Different Districts')
+        plt.ylabel('Owner\'s Age')
+        plt.legend(title='Owner\'s Gender', loc='upper right')
+        plt.show()
+
     # Salary and Daily Balance
     if salary_daily_balance:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
@@ -391,7 +443,7 @@ def main():
 
     # Salary and Daily Balance Normalized
     if salary_daily_balance_norm:
-        dev, _ = data.get_data()
+        dev, _ = data.get_loans_data()
         sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
@@ -400,7 +452,7 @@ def main():
     # Districts
     if munis_per_district:
         district_data = data.get_district_data()
-        district_data = data.normalize_district(district_data, 'muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000', 'n_cities')
+        district_data = data.normalize_district(district_data, '')
         d = district_data.groupby('region').mean().reset_index()
         d = data.select(d, ['region', 'muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000'])
         sb.set()
@@ -412,14 +464,11 @@ def main():
 
     #### Transactions Amount and Deviation
     if transactions_amount_and_deviation:
-        dev, _ = data.get_raw_data()
+        dev, _ = data.get_raw_loans_data()
         sb.scatterplot(data=dev, x='avg_amount', y='balance_deviation', hue='status').set(title='Transaction Amount and Balance Deviation Comparison', xlabel='Transaction Amount', ylabel='Balance Deviation')
         plt.xscale('log')
         plt.yscale('log')
         plt.show()
-
-    #### Comparison between deve
-    if dev_vs_competition
 
     #### District (Correlation)
     if district:
@@ -440,12 +489,21 @@ def main():
 
     #### All (Correlation)
     if all_corr:
-        d, _ = data.get_raw_data()
+        d, _ = data.get_loans_data()
+        d = d.dropna(axis=1, how='any')
+        to_drop = [
+            'frequency', 'disponent', 'gender_disponent', 'loan_id', 'date_loan',
+            'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+        ]
+        d = d.drop(to_drop, axis=1)
+        columns = list(d.columns)
+        (columns[0], columns[1]) = (columns[1], columns[0])
+        d = data.select(d, columns)
         correlation_analysis(d) # This one is too big and it is not good for analyzing
 
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
     if analyze_by_status:
-        d, c = data.get_data()
+        d, c = data.get_loans_data()
         selected = [
             'loan_id', 'status',
             'duration',
@@ -458,27 +516,12 @@ def main():
 
     #### All with Some Processing (Correlation)
     if all_with_processing:
-        d, _ = data.get_raw_data()
+        d, _ = data.get_raw_loans_data()
         
         d['type'].fillna('None', inplace=True)
         d['card'] = d['type'].apply(lambda x: 0 if x == 'None' else 1)
 
-        d = data.normalize_dict(d, {
-            'unemployment_96_account'      : 'unemployment_95_account',
-            'unemployment_96_owner'        : 'unemployment_95_owner',
-            'unemployment_96_disponent'    : 'unemployment_95_disponent',
-            'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
-            'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
-            'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
-        })
-        d = d.rename(columns={
-            'unemployment_96_account'      : 'unemployment_evolution_account',
-            'unemployment_96_owner'        : 'unemployment_evolution_owner',
-            'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
-            'crimes_96_per_1000_account'   : 'crimes_evolution_account',
-            'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
-            'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
-        })
+        d = data.get_evolution_values(d)
 
         d = d.drop([
             'loan_id',
@@ -514,7 +557,7 @@ def main():
     
     #### All in Parts (Correlation)
     if parts:
-        d, _ = data.get_data()
+        d, _ = data.get_loans_data()
         d = d.drop(['loan_id'], axis=1)
         columns = list(d.drop('status', axis=1).columns)
         for i in range(0, len(columns), 5):
@@ -524,8 +567,8 @@ def main():
 
     #### All possible scatter plots
     if all_possible_scatter:
-        d, _ = data.get_raw_data()
-        # d, _ = data.get_data()
+        d, _ = data.get_raw_loans_data()
+        d, _ = data.get_loans_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(list(combinations(columns, 2)))
         answer = input(f'Show all possible scatter plots ({n}) [y/N]? ').lower()
@@ -535,8 +578,8 @@ def main():
     
     #### All possible count plots
     if all_possible_count:
-        d, _ = data.get_raw_data()
-        # d, _ = data.get_data()
+        d, _ = data.get_raw_loans_data()
+        d, _ = data.get_loans_data()
         columns = d.drop(['loan_id', 'status'], axis=1).columns
         n = len(columns)
         answer = input(f'Show all possible count plots ({n}) [y/N]? ').lower()
