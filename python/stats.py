@@ -31,7 +31,7 @@ transactions_amount_and_deviation = False
 district             = False
 loan                 = False
 loan_and_trans       = False
-all_corr             = False
+all_corr             = True
 analyze_by_status    = False
 all_with_processing  = False
 parts                = False
@@ -415,7 +415,16 @@ def main():
 
     #### All (Correlation)
     if all_corr:
-        d, _ = data.get_raw_loans_data()
+        d, _ = data.get_loans_data()
+        d = d.dropna(axis=1, how='any')
+        to_drop = [
+            'frequency', 'disponent', 'gender_disponent', 'loan_id', 'date_loan',
+            'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+        ]
+        d = d.drop(to_drop, axis=1)
+        columns = list(d.columns)
+        (columns[0], columns[1]) = (columns[1], columns[0])
+        d = data.select(d, columns)
         correlation_analysis(d) # This one is too big and it is not good for analyzing
 
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
