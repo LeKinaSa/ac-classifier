@@ -57,8 +57,7 @@ def get_district_data(): # District (district)
     return district
 
 def get_account_data(): # Account (account)
-    account = pd.read_csv('../data/account.csv', sep=';')
-    return account
+    return pd.read_csv('../data/account.csv', sep=';')
 
 def get_card_data(): # Card (card_dev + card_comp)
     dev = pd.read_csv('../data/card_train.csv', sep=';')
@@ -221,9 +220,8 @@ def get_average_daily_balance_data(only_loans=True): # Transactions (average dai
     return df
 
 def get_number_of_transactions_data(): # Transactions (number of transactions)
-    transactions = get_transactions_data()
-    transactions = transactions.groupby('account_id')['trans_id'].count().rename('n_transactions').reset_index()
-    return transactions
+    return (get_transactions_data().groupby('account_id')['trans_id']
+        .count().rename('n_transactions').reset_index())
 
 def get_improved_transaction_data(only_loans=True): # Transactions (improved)
     transactions_mean = get_mean_transaction_data()
@@ -235,165 +233,36 @@ def get_improved_transaction_data(only_loans=True): # Transactions (improved)
 
 ### Merged Tables ###
 
-def merge_loan_account_district(remove_non_numeric=False): # Loan, Account, District
-    loan_dev, loan_competition = get_loan_data()
+def merge_all():
+    dev, comp = get_loan_data()
+    dev.rename(columns={'date': 'date_loan'}, inplace=True)
+    comp.rename(columns={'date': 'date_loan'}, inplace=True)
 
     account = get_account_data()
-    district = get_district_data()
+    account.drop('district_id', axis=1, inplace=True)
+    account.rename(columns={'date': 'date_account'}, inplace=True)
 
-    account_district = pd.merge(left=account, right=district, left_on='district_id', right_on='code', how='left')
-
-    dev = pd.merge(left=loan_dev, right=account_district, left_on='account_id', right_on='account_id', how='left')
-    competition = pd.merge(left=loan_competition, right=account_district, left_on='account_id', right_on='account_id', how='left')
-
-    if remove_non_numeric:
-        dev = dev.select_dtypes(['number']).copy()
-        competition = competition.select_dtypes(['number']).copy()
-
-    return dev, competition
-
-def merge_client_dispowner(): # Client, Disposition(owner)
     clients = get_client_data()
     disposition = get_disposition_data()
     disposition_owners = disposition.loc[disposition['type'] == 'OWNER']
     disposition_owners = disposition_owners.drop(['type'], axis=1)
     owners = pd.merge(left=disposition_owners, right=clients, on='client_id', how='left')
-    return owners
 
-def merge_loan_account_client_dispowner(): # Loan, Account, Client, Disposition(owner)
-    loan_dev, loan_comp = get_loan_data()
-    account = get_account_data()
-    owners = merge_client_dispowner()
+    tables = pd.merge(left=owners, right=account, on='account_id', how='left')
 
-    loan_dev  =  loan_dev.rename(columns={'date': 'date_loan'})
-    loan_comp = loan_comp.rename(columns={'date': 'date_loan'})
-    account   =   account.rename(columns={'date': 'date_account', 'district_id': 'district_id_account'})
-    owners    =    owners.rename(columns={'district_id': 'district_id_owner'})
-
-    account_owner = pd.merge(left=owners, right=account, on='account_id', how='left')
-    loan_owner_dev  = pd.merge(left=loan_dev , right=account_owner, on='account_id', how='left')
-    loan_owner_comp = pd.merge(left=loan_comp, right=account_owner, on='account_id', how='left')
-    return (loan_owner_dev, loan_owner_comp)
-
-def merge_loan_account_client_dispowner_districtaccount_districtowner(): # Loan, Account, Client, Disposition(owner), District(account), District(owner)
     district = get_district_data()
-    account_district = district.rename(columns={
-        'code' : 'code_account',
-        'name' : 'name_account',
-        'region' : 'region_account',
-        'population' : 'population_account',
-        'muni_under499' : 'muni_under499_account',
-        'muni_500_1999' : 'muni_500_1999_account',
-        'muni_2000_9999' : 'muni_2000_9999_account',
-        'muni_over10000' : 'muni_over10000_account',
-        'n_cities' : 'n_cities_account',
-        'ratio_urban' : 'ratio_urban_account',
-        'avg_salary' : 'avg_salary_account',
-        'unemployment_95' : 'unemployment_95_account',
-        'unemployment_96' : 'unemployment_96_account',
-        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_account',
-        'crimes_95_per_1000' : 'crimes_95_per_1000_account',
-        'crimes_96_per_1000' : 'crimes_96_per_1000_account',
-    })
-    client_district  = district.rename(columns={
-        'code' : 'code_owner',
-        'name' : 'name_owner',
-        'region' : 'region_owner',
-        'population' : 'population_owner',
-        'muni_under499' : 'muni_under499_owner',
-        'muni_500_1999' : 'muni_500_1999_owner',
-        'muni_2000_9999' : 'muni_2000_9999_owner',
-        'muni_over10000' : 'muni_over10000_owner',
-        'n_cities' : 'n_cities_owner',
-        'ratio_urban' : 'ratio_urban_owner',
-        'avg_salary' : 'avg_salary_owner',
-        'unemployment_95' : 'unemployment_95_owner',
-        'unemployment_96' : 'unemployment_96_owner',
-        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_owner',
-        'crimes_95_per_1000' : 'crimes_95_per_1000_owner',
-        'crimes_96_per_1000' : 'crimes_96_per_1000_owner',
-    })
-    loan_owner_dev, loan_owner_comp = merge_loan_account_client_dispowner()
+    tables = pd.merge(left=tables, right=district, left_on='district_id', right_on='code', how='left')
 
-    dev = pd.merge(left=loan_owner_dev, right=account_district, left_on='district_id_account', right_on='code_account', how='left')
-    dev = pd.merge(left=dev, right=client_district, left_on='district_id_owner', right_on='code_owner', how='left')
-
-    comp = pd.merge(left=loan_owner_comp, right=account_district, left_on='district_id_account', right_on='code_account', how='left')
-    comp = pd.merge(left=comp, right=client_district, left_on='district_id_owner', right_on='code_owner', how='left')
-
-    return (dev, comp)
-
-def merge_loan_account_client_dispowner_districtaccount_districtowner_card(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner)
-    loan_owner_district_dev, loan_owner_district_comp = merge_loan_account_client_dispowner_districtaccount_districtowner()
     card = get_card_data()
+    tables = pd.merge(left=tables, right=card, on='disp_id', how='left')
 
-    dev  = pd.merge(left=loan_owner_district_dev , right=card , on='disp_id', how='left')
-    comp = pd.merge(left=loan_owner_district_comp, right=card, on='disp_id', how='left')
-    
-    return (dev, comp)
-
-def merge_client_dispdisponent_district(): # Client, Disposition(disponent), District(disponent)
-    clients = get_client_data()
-    disposition = get_disposition_data()
-    disposition_disponents = disposition.loc[disposition['type'] == 'DISPONENT']
-    disposition_disponents = disposition_disponents.drop(['type'], axis=1)
-    disponents = pd.merge(left=disposition_disponents, right=clients, on='client_id', how='left')
-    district = get_district_data()
-    disponent_district = pd.merge(left=disponents, right=district, left_on='district_id', right_on='code', how='left')
-    return disponent_district
-
-def merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent(): # Loan, Account, Client, Disposition(owner), District(account), District(owner), Card(owner), Disposition(disponent)
-    loan_dev, loan_comp = merge_loan_account_client_dispowner_districtaccount_districtowner_card()
-    disponent = merge_client_dispdisponent_district()
-    
-    disponent = disponent.rename(columns={
-        'code' : 'code_disponent',
-        'name' : 'name_disponent',
-        'region' : 'region_disponent',
-        'population' : 'population_disponent',
-        'muni_under499' : 'muni_under499_disponent',
-        'muni_500_1999' : 'muni_500_1999_disponent',
-        'muni_2000_9999' : 'muni_2000_9999_disponent',
-        'muni_over10000' : 'muni_over10000_disponent',
-        'n_cities' : 'n_cities_disponent',
-        'ratio_urban' : 'ratio_urban_disponent',
-        'avg_salary' : 'avg_salary_disponent',
-        'unemployment_95' : 'unemployment_95_disponent',
-        'unemployment_96' : 'unemployment_96_disponent',
-        'entrepreneurs_per_1000' : 'entrepreneurs_per_1000_disponent',
-        'crimes_95_per_1000' : 'crimes_95_per_1000_disponent',
-        'crimes_96_per_1000' : 'crimes_96_per_1000_disponent',        
-        'client_id' : 'client_id_disponent',
-        'birthday' : 'birthday_disponent',
-        'gender' : 'gender_disponent',
-        'district_id' : 'district_id_disponent',
-    })
-    loan_dev = loan_dev.rename(columns={
-        'client_id' : 'client_id_owner',
-        'birthday' : 'birthday_owner',
-        'gender' : 'gender_owner',
-        'district_id' : 'district_id_owner',
-    })
-    loan_comp = loan_comp.rename(columns={
-        'client_id' : 'client_id_owner',
-        'birthday' : 'birthday_owner',
-        'gender' : 'gender_owner',
-        'district_id' : 'district_id_owner',
-    })
-
-    dev = pd.merge(left=loan_dev, right=disponent, on=['disp_id', 'account_id'], how='left')
-    comp = pd.merge(left=loan_comp, right=disponent, on=['disp_id', 'account_id'], how='left')
-    
-    return (dev, comp)
-
-def merge_all():
-    (dev, comp) = merge_loan_account_client_dispowner_districtaccount_districtowner_card_dispdisponent()
     transactions = get_improved_transaction_data()
+    tables = pd.merge(left=tables, right=transactions, on='account_id')
     
-    dev  = pd.merge(left=dev , right=transactions, on='account_id')
-    comp = pd.merge(left=comp, right=transactions, on='account_id')
+    dev  = pd.merge(left=dev , right=tables, on='account_id')
+    comp = pd.merge(left=comp, right=tables, on='account_id')
 
-    return (dev, comp)
+    return dev, comp
 
 ### All Tables Merged ###
 
@@ -675,7 +544,7 @@ def process_loan_data(d):
     ], axis=1)
     
     # The loan amount is redundant (since we have the number and value of payments: duration, payments)
-    d = d.drop('amount', axis=1)
+    #d = d.drop('amount', axis=1)
 
     # The transaction values need to be normalized with the payment
     d = normalize(d, [
@@ -688,7 +557,7 @@ def process_loan_data(d):
     d = normalize(d, ['avg_salary_account', 'avg_salary_owner', 'avg_salary_disponent'], 'payments')
     
     # Since the payment was used to normalize all the value related variables, it is no longer needed
-    d = d.drop('payments', axis=1)
+    #d = d.drop('payments', axis=1)
 
     # Normalize 96 values based on 95 and called it evolution
     d = get_evolution_values(d)
@@ -859,27 +728,28 @@ def set_working_directory():
             os.chdir(cwd + '/python')
 
 def main():
-    d, c = get_loans_data()
-    print('Loans Development:', d.shape)
-    print('Loans Competition:', c.shape)
-    clients = get_clients_data()
-    print('Clients:', clients.shape)
-    useless = [
-        'region_non_paid_partial_owner', 'region_non_paid_partial_account',
-        'region_non_paid_partial_disponent', 'population_disponent',
-        'muni_under499_disponent', 'muni_500_1999_disponent',
-        'muni_2000_9999_disponent', 'muni_over10000_disponent',
-        'n_cities_disponent', 'ratio_urban_disponent',
-        'avg_salary_disponent', 'unemployment_95_disponent',
-        'unemployment_evolution_disponent', 'entrepreneurs_per_1000_disponent',
-        'crimes_95_per_1000_disponent', 'crimes_evolution_disponent',
-        'gender_disponent', 'age_disponent', 'age_card',
-    ]
-    (d, c) = (d.drop(useless, axis=1), c.drop(useless, axis=1))
-    d.to_csv('../data/processed/dev_ready.csv', index=False)
-    c.to_csv('../data/processed/comp_ready.csv', index=False)
-    partial = balance(d)
-    partial.to_csv('../data/processed/dev_partial_ready.csv', index=False)
+    save_raw_loans_data()
+    # d, c = get_loans_data()
+    # print('Loans Development:', d.shape)
+    # print('Loans Competition:', c.shape)
+    # clients = get_clients_data()
+    # print('Clients:', clients.shape)
+    # useless = [
+    #     'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+    #     'region_non_paid_partial_disponent', 'population_disponent',
+    #     'muni_under499_disponent', 'muni_500_1999_disponent',
+    #     'muni_2000_9999_disponent', 'muni_over10000_disponent',
+    #     'n_cities_disponent', 'ratio_urban_disponent',
+    #     'avg_salary_disponent', 'unemployment_95_disponent',
+    #     'unemployment_evolution_disponent', 'entrepreneurs_per_1000_disponent',
+    #     'crimes_95_per_1000_disponent', 'crimes_evolution_disponent',
+    #     'gender_disponent', 'age_disponent', 'age_card',
+    # ]
+    # (d, c) = (d.drop(useless, axis=1), c.drop(useless, axis=1))
+    # d.to_csv('../data/processed/dev_ready.csv', index=False)
+    # c.to_csv('../data/processed/comp_ready.csv', index=False)
+    # partial = balance(d)
+    # partial.to_csv('../data/processed/dev_partial_ready.csv', index=False)
 
 if __name__ == '__main__':
     set_working_directory()

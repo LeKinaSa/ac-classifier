@@ -470,6 +470,17 @@ def main():
         plt.yscale('log')
         plt.show()
 
+    #### Comparison between development and competition datasets
+    if dev_vs_competition:
+        d, c = data.get_raw_loans_data()
+        d['data'] = 'Development'
+        c['data'] = 'Competition'
+        loans = d.append(c, ignore_index=True)
+
+        g = sb.boxplot(data=loans, x='data', y='amount')
+        g.set(xlabel='Dataset', ylabel='Loan Amount', title='Loan Amount Distribution per Dataset')
+        plt.show()
+
     #### District (Correlation)
     if district:
         d = data.get_district_data()
