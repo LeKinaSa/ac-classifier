@@ -6,13 +6,14 @@ from itertools import combinations
 import os
 import data
 from data import set_working_directory
+from sklearn.preprocessing import KBinsDiscretizer
 
 ################################################################################
 ##########        Global Variables for showing only some graphs       ##########
 ################################################################################
 # General
-status_pie_chart   = True
-general_statistics = True
+status_pie_chart   = False
+general_statistics = False
 # First Contact with the Data
 district_scatter_plots            = False
 loan_amounts                      = False
@@ -21,11 +22,12 @@ percentage_paid_loans             = False
 date                              = False
 card_graphs                       = False
 transactions_graphs               = False
-owners_graphs                     = True
+owners_graphs                     = False
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
 transactions_amount_and_deviation = False
+dev_vs_competition                = True
 # Correlation Graphs
 district             = False
 loan                 = False
@@ -316,13 +318,49 @@ def main():
                 lambda row: int((row['date_loan'] - row['birthday']).days / 365.2425),
                 axis=1
             )
+        
+        both = loan_owner_client_dev.append(loan_owner_client_comp, ignore_index=True)
+        both['dev'] = ~both['status'].isnull()
 
-        g = sb.histplot(data=loan_owner_client_dev, x='age_loan', bins=15)
+        print(both['age_loan'].describe())
+        
+        g = sb.histplot(data=both, x='age_loan', hue='dev', bins=np.arange(10, 64, 4), alpha=0.4, palette=['tab:blue', 'tab:red'])
         g.set(
-            title='Age Distribution (Dev)',
+            title='Age At Loan Time',
             xlabel='Age',
             ylabel='Count',
         )
+        plt.show()
+
+        discretizer = KBinsDiscretizer(n_bins=8, encode='ordinal', strategy='uniform')
+        loan_owner_client_dev['age_bin'] = discretizer.fit_transform(
+            loan_owner_client_dev['age_loan'].values.reshape(-1, 1))
+        
+        bin_edges = discretizer.bin_edges_[0].tolist()
+        labels = []
+
+        for f, s in zip(bin_edges, bin_edges[1:]):
+            labels.append(str(round(f)) + '-' + str(round(s)))
+
+        fig, axes = plt.subplots(1, 2)
+        fig.suptitle('Percentage of Paid Loans by Age')
+        
+        paid = (loan_owner_client_dev.groupby('age_bin')['status'].value_counts(normalize=True).mul(100)
+            .rename('paid_percent').reset_index())
+
+        g = sb.countplot(data=loan_owner_client_dev, x='age_bin', ax=axes[0])
+        g.set(xlabel='Age Bin', ylabel='Count')
+        g.set_xticklabels(labels)
+        g.bar_label(g.containers[0])
+
+        g = sb.barplot(data=paid, x='age_bin', y='paid_percent', hue='status', 
+            ax=axes[1], palette=['forestgreen', 'firebrick'])
+        g.set(xlabel='Age Bin', ylabel='Paid Loans (%)')
+        g.set_xticklabels(labels)
+        g.get_legend().remove()
+        for container in g.containers:
+            g.bar_label(container, fmt='%.1f')
+        
         plt.show()
 
         sb.countplot(data=loan_owner_client_dev , x='gender', palette=['violet', 'deepskyblue'])
@@ -379,6 +417,9 @@ def main():
         plt.xscale('log')
         plt.yscale('log')
         plt.show()
+
+    #### Comparison between deve
+    if dev_vs_competition
 
     #### District (Correlation)
     if district:
