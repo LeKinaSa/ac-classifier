@@ -22,7 +22,7 @@ card_graphs                       = False
 transactions_graphs               = False
 owners_graphs                     = False
 district_client_vs_account        = False
-owners_age                        = True
+owners_age                        = False
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -151,11 +151,7 @@ def main():
         dev, _ = data.merge_loan_account_district()
         dev['date_x'] = pd.to_datetime(dev['date_x'].apply(data.get_birthday_from_birth_number))
 
-        d_maj = dev[dev['status'] == 0]
-        d_min = dev[dev['status'] == 1]
-
-        d_under = d_maj.sample(len(d_min.index), random_state=0)
-        dev = pd.concat([d_under, d_min])
+        dev = data.balance(dev)
 
         sb.scatterplot(data=dev, x='unemployment_95', y='amount', hue='status')
         plt.show()
@@ -442,22 +438,7 @@ def main():
         d['type'].fillna('None', inplace=True)
         d['card'] = d['type'].apply(lambda x: 0 if x == 'None' else 1)
 
-        d = data.normalize_dict(d, {
-            'unemployment_96_account'      : 'unemployment_95_account',
-            'unemployment_96_owner'        : 'unemployment_95_owner',
-            'unemployment_96_disponent'    : 'unemployment_95_disponent',
-            'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
-            'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
-            'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
-        })
-        d = d.rename(columns={
-            'unemployment_96_account'      : 'unemployment_evolution_account',
-            'unemployment_96_owner'        : 'unemployment_evolution_owner',
-            'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
-            'crimes_96_per_1000_account'   : 'crimes_evolution_account',
-            'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
-            'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
-        })
+        d = data.get_evolution_values(d)
 
         d = d.drop([
             'loan_id',

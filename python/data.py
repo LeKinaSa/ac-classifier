@@ -632,6 +632,25 @@ def drop_district_info(d, info):
     ], axis = 1)
     return d
 
+def get_evolution_values(d):
+    d = normalize_dict(d, {
+        'unemployment_96_account'      : 'unemployment_95_account',
+        'unemployment_96_owner'        : 'unemployment_95_owner',
+        'unemployment_96_disponent'    : 'unemployment_95_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
+        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
+    })
+    d = d.rename(columns={
+        'unemployment_96_account'      : 'unemployment_evolution_account',
+        'unemployment_96_owner'        : 'unemployment_evolution_owner',
+        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
+        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
+        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
+        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
+    })
+    return d
+
 def process_loan_data(d):
     ### Here are some ideas of what could be done
 
@@ -659,22 +678,7 @@ def process_loan_data(d):
     d = d.drop('payments', axis=1)
 
     # Normalize 96 values based on 95 and called it evolution
-    d = normalize_dict(d, {
-        'unemployment_96_account'      : 'unemployment_95_account',
-        'unemployment_96_owner'        : 'unemployment_95_owner',
-        'unemployment_96_disponent'    : 'unemployment_95_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
-        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
-    })
-    d = d.rename(columns={
-        'unemployment_96_account'      : 'unemployment_evolution_account',
-        'unemployment_96_owner'        : 'unemployment_evolution_owner',
-        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
-        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
-    })
+    d = get_evolution_values(d)
 
     # Theory: the fact that the account doesn't have a card is information
     d['type'].fillna('None', inplace=True)
@@ -736,22 +740,7 @@ def get_clients_data():
     clients = get_raw_clients_data()
 
     # 96 Values
-    clients = normalize_dict(clients, {
-        'unemployment_96_account'      : 'unemployment_95_account',
-        'unemployment_96_owner'        : 'unemployment_95_owner',
-        'unemployment_96_disponent'    : 'unemployment_95_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_95_per_1000_account',
-        'crimes_96_per_1000_owner'     : 'crimes_95_per_1000_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_95_per_1000_disponent',
-    })
-    clients = clients.rename(columns={
-        'unemployment_96_account'      : 'unemployment_evolution_account',
-        'unemployment_96_owner'        : 'unemployment_evolution_owner',
-        'unemployment_96_disponent'    : 'unemployment_evolution_disponent',
-        'crimes_96_per_1000_account'   : 'crimes_evolution_account',
-        'crimes_96_per_1000_owner'     : 'crimes_evolution_owner',
-        'crimes_96_per_1000_disponent' : 'crimes_evolution_disponent',
-    })
+    clients = get_evolution_values(clients)
 
     # Card (text to int)
     clients['card'] = clients['card'].apply(convert_card_to_int)
@@ -784,6 +773,13 @@ def select(d, columns):
         new[c] = d[c]
     return new
 
+def balance(d):
+    paid   = d[d['status'] == 0]
+    unpaid = d[d['status'] == 1]
+    s_paid = paid.sample(len(unpaid.index), random_state=0)
+    balanced = pd.concat([unpaid, s_paid])
+    return balanced
+
 def set_working_directory():
     cwd = os.getcwd()
     ubuntu_split = cwd.split('/')
@@ -799,10 +795,28 @@ def set_working_directory():
 
 def main():
     d, c = get_loans_data()
-    print('Loans Development: [', len(d), 'x', len(d.columns), ']')
-    print('Loans Competition: [', len(c), 'x', len(c.columns), ']')
+    print('Loans Development:', d.shape)
+    print('Loans Competition:', c.shape)
     clients = get_clients_data()
-    print('Clients: [', len(clients), 'x', len(clients.columns), ']')
+    print('Clients:', clients.shape)
+
+    useless = [
+        'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+        'region_non_paid_partial_disponent', 'population_disponent',
+        'muni_under499_disponent', 'muni_500_1999_disponent',
+        'muni_2000_9999_disponent', 'muni_over10000_disponent',
+        'n_cities_disponent', 'ratio_urban_disponent',
+        'avg_salary_disponent', 'unemployment_95_disponent',
+        'unemployment_evolution_disponent', 'entrepreneurs_per_1000_disponent',
+        'crimes_95_per_1000_disponent', 'crimes_evolution_disponent',
+        'gender_disponent', 'age_disponent', 'age_card',
+    ]
+    (d, c) = (d.drop(useless, axis=1), c.drop(useless, axis=1))
+    d.to_csv('../data/processed/dev_ready.csv', index=False)
+    c.to_csv('../data/processed/comp_ready.csv', index=False)
+    partial = balance(d)
+    partial.to_csv('../data/processed/dev_partial_ready.csv', index=False)
+
 
 if __name__ == '__main__':
     set_working_directory()
