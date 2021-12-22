@@ -43,6 +43,15 @@ def get_district_data(): # District (district)
     district['crimes_95_per_1000'] = district['crimes_95'] / district['population'] * 1000
     district['crimes_96_per_1000'] = district['crimes_96'] / district['population'] * 1000
 
+    district['unemployment_growth'] = (
+        (district['unemployment_96'] - district['unemployment_95']) /
+        district['unemployment_95']
+    )
+    district['crime_growth'] = (
+        (district['crimes_96_per_1000'] - district['crimes_95_per_1000']) /
+        district['crimes_95_per_1000']
+    )
+
     district = district.drop(['crimes_95', 'crimes_96'], axis=1)
     return district
 
@@ -90,8 +99,8 @@ def get_gender_from_birth_number(birth_number):
 
 def get_client_data(): # Client (client)
     client = pd.read_csv('../data/client.csv', sep=';')
-    client['birthday'] = client['birth_number'].apply(lambda x: get_birthday_from_birth_number(x))
-    client['gender'] = client['birth_number'].apply(lambda x: get_gender_from_birth_number(x))
+    client['birthday'] = client['birth_number'].apply(get_birthday_from_birth_number)
+    client['gender'] = client['birth_number'].apply(get_gender_from_birth_number)
     client = client.drop('birth_number', axis=1)
     return client
 
@@ -116,11 +125,15 @@ def get_mean_transaction_data(): # Transactions (mean transaction)
     t = transactions.groupby('account_id')['amount'].mean().rename('avg_abs_amount').reset_index()
 
     transactions = modify_transactions_by_type(transactions)
+    transactions['sign'] = transactions['amount'].apply(lambda x: 1 if x >= 0 else 0)
+    t_credit = transactions.groupby('account_id')['sign'].mean().rename('credit_ratio').reset_index()
+
     transactions = transactions.groupby('account_id')['amount'].mean().rename('avg_amount').reset_index()
 
+    t = pd.merge(left=t, right=t_credit, on='account_id')
     return pd.merge(left=transactions, right=t, on='account_id')
 
-def get_average_daily_balance_data(): # Transactions (average daily balance)
+def get_average_daily_balance_data(only_loan): # Transactions (average daily balance)
     loan_dev, loan_comp = get_loan_data()
     loans = loan_dev.append(loan_comp)
     loans = loans.drop(['loan_id', 'amount', 'duration', 'status'], axis=1)
@@ -138,10 +151,11 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
         group_df = group[1]
 
         loan = loans.loc[loans['account_id'] == id]
-        if len(loan) == 0:
-            continue
-        loan_date = loan.iloc[0]['date']
-        loan_payments = loan.iloc[0]['payments']
+        if only_loan:
+            if len(loan) == 0:
+                continue
+            loan_date = loan.iloc[0]['date']
+            loan_payments = loan.iloc[0]['payments']
 
         line['account_id'] = id
 
@@ -154,10 +168,11 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             interval = (row2.date - row1.date).days
 
             days += [row1.balance] * interval
-            (last_transaction_date, last_transaction_balance) = (row2.date, row2.balance)
+            last_transaction_date, last_transaction_balance = row2.date, row2.balance
 
-        interval = (loan_date - last_transaction_date).days
-        days += [last_transaction_balance] * interval
+        if only_loan:
+            interval = (loan_date - last_transaction_date).days
+            days += [last_transaction_balance] * interval
 
         line['avg_balance'] = group[1]['balance'].mean()
 
@@ -173,7 +188,9 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             line['balance_deviation'] = None
         else:
             line['negative_balance'] = len(list(filter(lambda x: x < 0, days))) / len(days)
-            line['high_balance'] = len(list(filter(lambda x: x < loan_payments, days))) / len(days)
+
+            if only_loan:
+                line['high_balance'] = len(list(filter(lambda x: x < loan_payments, days))) / len(days)
             
             for index in range(len(days) - 1, -1, -1):
                 if days[index] < 0:
@@ -182,7 +199,7 @@ def get_average_daily_balance_data(): # Transactions (average daily balance)
             else:
                 line['last_neg'] = 1
             for index in range(len(days) - 1, -1, -1):
-                if days[index] > loan_payments:
+                if only_loan and days[index] > loan_payments:
                     line['last_high'] = (len(days) - index) / len(days)
                     break
             else:
@@ -207,9 +224,9 @@ def get_number_of_transactions_data(): # Transactions (number of transactions)
     transactions = transactions.groupby('account_id')['trans_id'].count().rename('n_transactions').reset_index()
     return transactions
 
-def get_improved_transaction_data(): # Transactions (improved)
+def get_improved_transaction_data(only_loan=True): # Transactions (improved)
     transactions_mean = get_mean_transaction_data()
-    transactions_daily = get_average_daily_balance_data()
+    transactions_daily = get_average_daily_balance_data(only_loan)
     n_transactions = get_number_of_transactions_data()
 
     transactions_info = pd.merge(left=transactions_mean, right=n_transactions, on='account_id')
@@ -560,8 +577,56 @@ def process_data(d, drop_loan_date=True):
     return d
 
 def get_data(remove_loan_date=True):
-    (d, c) = get_raw_data()
-    return (process_data(d, remove_loan_date), process_data(c, remove_loan_date))
+    d, c = get_raw_data()
+    return process_data(d, remove_loan_date), process_data(c, remove_loan_date)
+
+def get_clustering_data():
+    clustering_file  = '../data/processed/clustering.csv'
+
+    if os.path.exists(clustering_file):
+        return pd.read_csv(clustering_file)
+    
+    acc = get_account_data()
+    trans = get_improved_transaction_data(only_loan=False)
+    dist = get_district_data()
+    client = get_client_data()
+    disp = get_disposition_data()
+    loan_dev, loan_comp = get_loan_data()
+    loan = loan_dev.append(loan_comp, ignore_index=True)
+    loan.rename(columns={'date': 'date_loan'}, inplace=True)
+
+    client.drop('district_id', axis=1, inplace=True)
+
+    # Merge data frames
+    df = pd.merge(client, disp, on='client_id')
+    df = pd.merge(df, acc, on='account_id')
+    df = pd.merge(df, dist, left_on='district_id', right_on='code')
+    df = pd.merge(df, trans, on='account_id')
+    df = pd.merge(df, loan, on='account_id', how='left')
+
+    # Drop unnecessary columns
+    df.drop(
+        ['client_id', 'district_id', 'disp_id', 'account_id', 'code', 
+        'name'],
+        axis=1,
+        inplace=True
+    )
+
+    for date in ['birthday', 'date']:
+        df[date] = pd.to_datetime(df[date].apply(get_readable_date))
+    
+    df['age'] = df.apply(
+        lambda row: int((row['date'] - row['birthday']).days / 365.2425),
+        axis=1
+    )
+    df.drop(['birthday', 'date'], axis=1, inplace=True)
+
+    df['gender'] = df['gender'].apply(convert_gender_to_int)
+    
+    os.makedirs('../data/processed/', exist_ok=True)
+    df.to_csv('../data/processed/clustering.csv', index=False)
+
+    return df
 
 def select(d, columns):
     new = pd.DataFrame()
@@ -570,9 +635,7 @@ def select(d, columns):
     return new
 
 def main():
-    d, _ = get_data()
-    # print(d.dtypes)
-    print(len(d.dtypes))
+    d = get_clustering_data()
 
 def set_working_directory():
     cwd = os.getcwd()
