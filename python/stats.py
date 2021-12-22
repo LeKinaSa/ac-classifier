@@ -7,9 +7,9 @@ import os
 import data
 from data import set_working_directory
 
-####################################################################################################
-####################        Global Variables for showing only some graphs       ####################
-####################################################################################################
+################################################################################
+##########        Global Variables for showing only some graphs       ##########
+################################################################################
 # General
 status_pie_chart   = True
 general_statistics = True
@@ -21,7 +21,7 @@ percentage_paid_loans             = False
 date                              = False
 card_graphs                       = False
 transactions_graphs               = False
-owners_graphs                     = False
+owners_graphs                     = True
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -37,7 +37,7 @@ parts                = False
 # All Possible Scatter and Count Plots -> keep False
 all_possible_scatter = False
 all_possible_count   = False
-####################################################################################################
+################################################################################
 
 def remove_dups(lst):
     return sorted(set(lst), key=lambda x: lst.index(x))
@@ -110,15 +110,23 @@ def correlation_analysis_by_status(d, c, annot=False, decimal_places=1):
     
     correlation_analysis(c, annot, decimal_places, 'Correlation Graph (competition data)')
 
-def scatter_plot(d, x, y):
-    sb.scatterplot(data=d, x=x, y=y, hue='status')
+def scatter_plot(d, x, y, hue='status'):
+    sb.scatterplot(data=d, x=x, y=y, hue=hue)
     plt.show()
 
-def count_plot(d, x):
-    sb.histplot(data=d, x=x, hue='status', multiple='fill')
+def count_plot(d, x, hue='status'):
+    sb.histplot(data=d, x=x, hue=hue, multiple='fill')
     plt.show()
 
-####################################################################################################
+def violin_plot(d, x, y):
+    sb.violinplot(data=d, x=x, y=y)
+    plt.show()
+
+def box_plot(d, x, y):
+    sb.boxplot(data=d, x=x, y=y)
+    plt.show()
+
+################################################################################
 
 def main(): 
     #### Status Pie Chart
@@ -130,12 +138,16 @@ def main():
 
     #### General Statistics
     if general_statistics:
-        dev, _ = data.get_data()
-        print(dev.nunique())
-        print(dev.dtypes)
         dev, comp = data.get_raw_data()
-        print(dev['date_loan'].head())
-        print(comp['date_loan'].head())
+        dev['year'] = dev['date_loan'] // 10000
+        comp['year'] = comp['date_loan'] // 10000
+
+        print('--------- DEVELOPMENT ---------')
+        print(dev[['amount', 'duration']].describe())
+        print(dev.groupby('year')[['amount', 'duration', 'payments']].mean())
+        print('\n--------- COMPETITION ---------')
+        print(comp[['amount', 'duration']].describe())
+        print(comp.groupby('year')[['amount', 'duration', 'payments']].mean())
 
     #### District Graphs
     if district_scatter_plots:
@@ -175,6 +187,13 @@ def main():
             title='Distribution of Loan Amounts',
             ylabel='Count',
             xlabel='Amount',
+        )
+        plt.show()
+
+        g = sb.scatterplot(data=dev, x='payments', y='amount', hue='duration')
+        g.set(
+            xlabel='Payments',
+            ylabel='Amount',
         )
         plt.show()
 
@@ -277,19 +296,44 @@ def main():
         owners = data.merge_client_dispowner()
         loan_owner_client_dev, loan_owner_client_comp = data.merge_loan_account_client_dispowner()
 
-        sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
+        # sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
+        # plt.show()
+
+        g = sb.countplot(data=owners, x='gender', palette=['violet', 'deepskyblue'])
+        g.bar_label(g.containers[0])
+        g.set(
+            title='Gender Distribution',
+            xlabel='Gender',
+            ylabel='Count',
+        )
         plt.show()
 
-        sb.countplot(data=owners, x='gender')
+        for df in [loan_owner_client_dev, loan_owner_client_comp]:
+            for row in ['date_loan', 'birthday']:
+                df[row] = pd.to_datetime(df[row].apply(data.get_readable_date))
+
+            df['age_loan'] = df.apply(
+                lambda row: int((row['date_loan'] - row['birthday']).days / 365.2425),
+                axis=1
+            )
+
+        g = sb.histplot(data=loan_owner_client_dev, x='age_loan', bins=15)
+        g.set(
+            title='Age Distribution (Dev)',
+            xlabel='Age',
+            ylabel='Count',
+        )
         plt.show()
 
-        sb.countplot(data=loan_owner_client_dev , x='gender')
+        sb.countplot(data=loan_owner_client_dev , x='gender', palette=['violet', 'deepskyblue'])
         plt.show()
 
-        sb.countplot(data=loan_owner_client_comp, x='gender')
+        sb.countplot(data=loan_owner_client_comp, x='gender', palette=['violet', 'deepskyblue'])
         plt.show()
 
-        sb.countplot(data=loan_owner_client_dev, x='status', hue='gender')
+        g = sb.countplot(data=loan_owner_client_dev, x='status', hue='gender', palette=['violet', 'deepskyblue'])
+        for container in g.containers:
+            g.bar_label(container)
         plt.show()
 
         loan_owner_client_dev['same_district'] = loan_owner_client_dev['district_id_account'] == loan_owner_client_dev['district_id_owner']
