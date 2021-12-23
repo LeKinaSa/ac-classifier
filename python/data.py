@@ -320,15 +320,10 @@ def convert_gender_to_int(x):
     return 1 if x == 'Female' else 0
 
 def process_loan_data(d):
-    ### Here are some ideas of what could be done
-
     # Drop ids and disctrict codes (don't drop 'loan_id')
     d = d.drop([
         'account_id', 'district_id', 'code', 'name', 'region', 'disp_id', 'card_id', 'client_id'
     ], axis=1)
-    
-    # The loan amount is redundant (since we have the number and value of payments: duration, payments)
-    # d = d.drop('amount', axis=1)
 
     # The transaction values need to be normalized with the monthly payments
     d = normalize(d, [
@@ -351,11 +346,10 @@ def process_loan_data(d):
 
     card_df = pd.DataFrame(one_hot, columns=cols, dtype=int)
     d = d.join(card_df)
-
     d = d.drop('type', axis=1)
-
+    
+    # Convert dates to ages
     d['issued'] = d['issued'].astype('Int64')
-    # Theory: dates are not important, but maybe ages are
     for date in ['date_account', 'issued', 'birthday', 'date_loan']:
         d[date] = pd.to_datetime(d[date].apply(
             lambda x: get_readable_date(x) if type(x) is int else x))
@@ -367,12 +361,12 @@ def process_loan_data(d):
         'birthday' : 'age_owner',
     })
     d = d.drop('date_loan', axis=1)
+
     # Convert owner age to years
     d['age_owner'] = (d['age_owner'] / 12).astype(int)
 
     # Normalize district data
     d = normalize_district(d)
-    d = d.drop('population', axis=1)
     
     # Convert owner's gender to integer
     d['gender'] = d['gender'].apply(convert_gender_to_int)
