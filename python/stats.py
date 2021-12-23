@@ -28,7 +28,7 @@ salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
 transactions_amount_and_deviation = False
-dev_vs_competition                = True
+dev_vs_competition                = False
 # Correlation Graphs
 district             = False
 loan                 = False
@@ -501,16 +501,23 @@ def main():
     #### All (Correlation)
     if all_corr:
         d, _ = data.get_loans_data()
-        d = d.dropna(axis=1, how='any')
-        to_drop = [
-            'frequency', 'disponent', 'gender_disponent', 'loan_id', 'date_loan',
-            'region_non_paid_partial_owner', 'region_non_paid_partial_account',
+        columns = [
+            #'loan_id',
+            'amount', 'duration', 'payments', 'status', 'age_owner',
+            'gender', 'frequency', 'age_account_months', 'muni_under499',
+            'muni_500_1999', 'muni_2000_9999', 'muni_over10000', 'n_cities',
+            'ratio_urban', 'avg_salary', 'unemployment_95', 'unemployment_96',
+            'entrepreneurs_per_1000', 'crimes_95_per_1000', 'crimes_96_per_1000',
+            'unemployment_growth', 'crime_growth', 'age_card_months',
+            'avg_balance', 'avg_daily_balance', 'balance_deviation',
+            'balance_distribution_first_quarter', 'balance_distribution_median',
+            'balance_distribution_third_quarter', 'high_balance', 'last_high',
+            'last_neg', 'negative_balance', 'avg_amount', 'avg_abs_amount',
+            'credit_ratio', 'n_transactions', 'card_classic', 'card_gold',
+            'card_junior', 'card_none',
         ]
-        d = d.drop(to_drop, axis=1)
-        columns = list(d.columns)
-        (columns[0], columns[1]) = (columns[1], columns[0])
         d = data.select(d, columns)
-        correlation_analysis(d) # This one is too big and it is not good for analyzing
+        correlation_analysis(d)
 
     #### All Processed (Default Processing) - Analyzing Correlations By Loan Status
     if analyze_by_status:
