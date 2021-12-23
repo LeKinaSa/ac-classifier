@@ -431,6 +431,12 @@ def get_loans_data():
     d, c = get_raw_loans_data()
     return process_loan_data(d), process_loan_data(c)
 
+def select(d, columns):
+    new = pd.DataFrame()
+    for c in columns:
+        new[c] = d[c]
+    return new
+
 def set_working_directory():
     cwd = os.getcwd()
     ubuntu_split = cwd.split('/')
