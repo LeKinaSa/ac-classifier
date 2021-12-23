@@ -14,16 +14,15 @@ from sklearn.preprocessing import KBinsDiscretizer
 status_pie_chart   = False
 general_statistics = False
 # First Contact with the Data
-district_scatter_plots            = False
+district_scatter_plots            = False # no undersampling
 loan_amounts                      = False
 card                              = False
 percentage_paid_loans             = False
 date                              = False
 card_graphs                       = False
 transactions_graphs               = False
-owners_graphs                     = False
-district_client_vs_account        = False
-owners_age                        = False
+owners_graphs                     = False # broken
+district_client_vs_account        = False # broken
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -33,9 +32,8 @@ dev_vs_competition                = False
 district             = False
 loan                 = False
 loan_and_trans       = False
-all_corr             = True
+all_corr             = False
 analyze_by_status    = False
-all_with_processing  = False
 parts                = False
 # All Possible Scatter and Count Plots -> keep False
 all_possible_scatter = False
@@ -141,7 +139,7 @@ def main():
 
     #### General Statistics
     if general_statistics:
-        dev, comp = data.get_raw_data()
+        dev, comp = data.get_raw_loans_data()
         dev['year'] = dev['date_loan'] // 10000
         comp['year'] = comp['date_loan'] // 10000
 
@@ -154,10 +152,9 @@ def main():
 
     #### District Graphs
     if district_scatter_plots:
-        dev, _ = data.merge_loan_account_district()
-        dev['date_x'] = pd.to_datetime(dev['date_x'].apply(data.get_birthday_from_birth_number))
+        dev, _ = data.get_loans_data()
 
-        dev = data.balance(dev)
+        # dev = data.balance(dev) # TODO: broken
 
         sb.scatterplot(data=dev, x='unemployment_95', y='amount', hue='status')
         plt.show()
@@ -207,11 +204,11 @@ def main():
         plt.show()
 
         # Loan Amounts per District
-        sb.boxplot(x='district_id_account', y='amount', data=dev)
+        sb.boxplot(x='district_id', y='amount', data=dev)
         plt.show()
 
         # Loan Amounts per Region
-        sb.boxplot(x='region_account', y='amount', data=dev)
+        sb.boxplot(x='region', y='amount', data=dev)
         plt.show()
 
     # Percentage of Loans Paid per Region and Frequency
@@ -220,8 +217,8 @@ def main():
         dev['paid'] = dev['status'].apply(lambda x: True if x == 0 else False)
 
         # Paid Loans per Region
-        gb = dev.groupby('region_account')['paid'].value_counts(normalize=True).mul(100).rename('paid_percent').reset_index()
-        g = sb.histplot(data=gb, x='region_account', hue='paid', weights='paid_percent', 
+        gb = dev.groupby('region')['paid'].value_counts(normalize=True).mul(100).rename('paid_percent').reset_index()
+        g = sb.histplot(data=gb, x='region', hue='paid', weights='paid_percent', 
                 discrete=True, multiple='stack', shrink=0.8, hue_order=[False, True],
                 palette=['firebrick', 'forestgreen'])
         g.set(
@@ -293,7 +290,7 @@ def main():
 
     #### Owners
     if owners_graphs:
-        owners = data.merge_client_dispowner()
+        owners = data.merge_client_dispowner() # TODO: broken
         loan_owner_client_dev, loan_owner_client_comp = data.merge_loan_account_client_dispowner()
 
         # sb.countplot(data=owners, x='account_id').set(title='Number of Owners per Account')
@@ -383,17 +380,11 @@ def main():
     def check_districts(row):    
         account   = row['name_account'  ]
         owner     = row['name_owner'    ]
-        disponent = row['name_disponent']
-
-        if disponent is not str: # NaN
-            return account != owner
-        if owner != disponent:
-            print('owner != disponent')
-        return account != owner and account != disponent
+        return account != owner
 
     if district_client_vs_account:
-        clients = data.get_raw_clients_data()
-        clients = data.select(clients, ['name_owner', 'name_disponent', 'name_account'])
+        clients = data.get_raw_clients_data() # TODO: broken
+        clients = data.select(clients, ['name_owner', 'name_account']) # TODO: broken
         clients['inconsistent'] = clients.apply(check_districts, axis=1)
         print('Clients with the same district as the account:   ', len(clients[clients['inconsistent'] == False]))
         print('Clients with different district from the account:', len(clients[clients['inconsistent'] == True ]))
@@ -406,37 +397,10 @@ def main():
         plt.xlabel('Different Districts')
         plt.show()
 
-    #### Owners Age
-    if owners_age:
-        d, c = data.get_raw_loans_data()
-        loans = pd.concat([d, c], verify_integrity=True, ignore_index=True)
-        print('Integrity Verification:', len(d) + len(c), len(loans))
-
-        # Birthday -> Age
-        loans = data.get_ages(loans, ['birthday_owner'], 'date_loan')
-        loans = loans.rename(columns={'birthday_owner' : 'age_owner'})
-        
-        loans = data.select(loans, ['age_owner', 'gender_owner', 'name_owner', 'name_disponent', 'name_account'])
-        loans['inconsistent'] = loans.apply(check_districts, axis=1)
-        
-        false_count = len(loans[loans['inconsistent'] == False])
-        true_count  = len(loans[loans['inconsistent'] == True ])
-        print('Loans from clients with the same district as the account:   ', false_count)
-        print('Loans from clients with different district from the account:', true_count )
-        
-        g = sb.violinplot(data=loans, x='inconsistent', y='age_owner', hue='gender_owner', \
-                          split=True, scale='count', scale_hue=False, linewidth=0.4, cut=0)
-        g.set_xticklabels([f'False ({false_count})', f'True ({true_count})'])
-        plt.title('Clients and account have the same district')
-        plt.xlabel('Different Districts')
-        plt.ylabel('Owner\'s Age')
-        plt.legend(title='Owner\'s Gender', loc='upper right')
-        plt.show()
-
     # Salary and Daily Balance
     if salary_daily_balance:
         dev, _ = data.get_raw_loans_data()
-        sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
+        sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
         plt.show()
@@ -444,7 +408,7 @@ def main():
     # Salary and Daily Balance Normalized
     if salary_daily_balance_norm:
         dev, _ = data.get_loans_data()
-        sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary_account', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
+        sb.scatterplot(data=dev, x='avg_daily_balance', y='avg_salary', hue='status').set(title='Salary and Balance Comparison', xlabel='Average Daily Balance', ylabel='Average Salary')
         plt.xscale('log')
         plt.yscale('log')
         plt.show()
@@ -452,7 +416,7 @@ def main():
     # Districts
     if munis_per_district:
         district_data = data.get_district_data()
-        district_data = data.normalize_district(district_data, '')
+        district_data = data.normalize_district(district_data)
         d = district_data.groupby('region').mean().reset_index()
         d = data.select(d, ['region', 'muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000'])
         sb.set()
@@ -502,8 +466,7 @@ def main():
     if all_corr:
         d, _ = data.get_loans_data()
         columns = [
-            #'loan_id',
-            'amount', 'duration', 'payments', 'status', 'age_owner',
+            'status', 'amount', 'duration', 'payments', 'age_owner',
             'gender', 'frequency', 'age_account_months', 'muni_under499',
             'muni_500_1999', 'muni_2000_9999', 'muni_over10000', 'n_cities',
             'ratio_urban', 'avg_salary', 'unemployment_95', 'unemployment_96',
@@ -525,54 +488,13 @@ def main():
         selected = [
             'loan_id', 'status',
             'duration',
-            'gender_owner',
+            'gender',
             'balance_deviation', 'balance_distribution_first_quarter',
-            'card', 'high_balance', 'last_neg',
+            'high_balance', 'last_neg',
         ]
         (d, c) = (data.select(d, selected), data.select(c, selected))
         correlation_analysis_by_status(d, c, True, 1)
 
-    #### All with Some Processing (Correlation)
-    if all_with_processing:
-        d, _ = data.get_raw_loans_data()
-        
-        d['type'].fillna('None', inplace=True)
-        d['card'] = d['type'].apply(lambda x: 0 if x == 'None' else 1)
-
-        d = data.get_evolution_values(d)
-
-        d = d.drop([
-            'loan_id',
-            'account_id', 'client_id_owner', 'client_id_disponent',
-            'district_id_account', 'district_id_owner', 'district_id_disponent',
-            'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id',
-
-            'birthday_disponent', 'gender_disponent',
-            'issued', 'type'
-        ], axis=1)
-
-        d['avg_salary'] = d['avg_salary_account']
-        d = data.drop_district_info(d, 'disponent')
-        d = data.drop_district_info(d, 'owner')
-        d = data.drop_district_info(d, 'account')
-
-        correlation_analysis(d, True)
-
-        d['amount_div_daily_balance'] = d['amount'] / d['avg_daily_balance']
-        d['amount_div_avg_salary'] = d['amount'] / d['avg_salary']
-        d['payments_div_daily_balance'] = d['payments'] / d['avg_daily_balance']
-        d['payments_div_avg_salary'] = d['payments'] / d['avg_salary']
-        d = d.drop([
-            'date_loan', 'amount', 'duration', 'payments', 'avg_salary', 'card',
-            'birthday_owner', 'gender_owner', 'frequency', 'date_account',
-            'avg_balance', 'avg_daily_balance', 'balance_deviation',
-            'balance_distribution_first_quarter', 'balance_distribution_median',
-            'balance_distribution_third_quarter', 'avg_amount', 'avg_abs_amount',
-            'high_balance', 'negative_balance', 'last_high', 'last_neg',
-            'n_transactions'
-        ], axis=1)
-        correlation_analysis(d, True, 3)
-    
     #### All in Parts (Correlation)
     if parts:
         d, _ = data.get_loans_data()
