@@ -22,7 +22,7 @@ date                              = False
 card_graphs                       = False
 transactions_graphs               = False
 owners_graphs                     = False # broken
-district_client_vs_account        = False # broken
+district_client_vs_account        = True # broken
 salary_daily_balance              = False
 salary_daily_balance_norm         = False
 munis_per_district                = False
@@ -376,25 +376,29 @@ def main():
         loan_owner_districts['same_region'] = loan_owner_districts['region_account'] == loan_owner_districts['region_owner']
         print('Region Owner == Region Account:', loan_owner_districts['same_region'].nunique())
 
-    #### Comparison between district owner/disponent and district account
-    def check_districts(row):    
-        account   = row['name_account'  ]
-        owner     = row['name_owner'    ]
-        return account != owner
 
     if district_client_vs_account:
-        clients = data.get_raw_clients_data() # TODO: broken
-        clients = data.select(clients, ['name_owner', 'name_account']) # TODO: broken
-        clients['inconsistent'] = clients.apply(check_districts, axis=1)
-        print('Clients with the same district as the account:   ', len(clients[clients['inconsistent'] == False]))
-        print('Clients with different district from the account:', len(clients[clients['inconsistent'] == True ]))
-        #sb.countplot(data=clients, x='inconsistent').set(title='Clients and account have the same district', xlabel='Different Districts')
-        #plt.show()
-        ax = sb.countplot(data=clients, x='inconsistent', palette=['forestgreen', 'firebrick'])
-        for p in ax.patches:
-            ax.annotate(str(p.get_height()), (p.get_x() + p.get_width()*0.47, p.get_height() + 0.5))
-        plt.title('Clients and account have the same district')
-        plt.xlabel('Different Districts')
+        client = data.get_client_data()
+        client.rename(columns={'district_id': 'district_client'}, inplace=True)
+        acc = data.get_account_data()
+        acc.rename(columns={'district_id': 'district_acc'}, inplace=True)
+        disp = data.get_disposition_data()
+
+        disp = disp[disp['type'] == 'OWNER']
+
+        client = pd.merge(client, disp, on='client_id')
+        client = pd.merge(client, acc, on='account_id')
+
+        client['same_district'] = client.apply(
+            lambda row: row['district_client'] == row['district_acc'], axis=1)
+
+        print('Clients with the same district as the account:   ', len(client[client['same_district'] == True]))
+        print('Clients with different district from the account:', len(client[client['same_district'] == False]))
+
+        g = sb.countplot(data=client, x='same_district', palette=['forestgreen', 'firebrick'], order=[True, False])
+        g.bar_label(g.containers[0])
+        g.set(xlabel='Same Districts', ylabel='Count',
+            title='Number of Clients with an Account in a Different District')
         plt.show()
 
     # Salary and Daily Balance
