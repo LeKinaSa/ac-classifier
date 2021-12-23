@@ -451,7 +451,24 @@ def set_working_directory():
             os.chdir(cwd + '/python')
 
 def main():
-    print(get_loans_data())
+    client = get_client_data()
+    account = get_account_data()
+    disp = get_disposition_data()
+    dev, comp = get_loan_data()
+    loan = dev.append(comp, ignore_index=True)
+    loan.rename(columns={'date': 'date_loan'}, inplace=True)
+
+    a = pd.merge(disp, account, on='account_id')
+    a = pd.merge(a, client, on='client_id')
+    a = pd.merge(a, loan, on='account_id')
+
+    duplicated_mask = a.duplicated(['birthday', 'gender', 'district_id_x', 
+        'district_id_y', 'type', 'frequency', 'date', 'amount', 'duration', 
+        'date_loan', 'status'], keep=False)
+
+    duplicated = a[duplicated_mask].sort_values(by=['birthday', 'gender', 'date'])
+
+    print(len(duplicated))
     # d, c = get_loans_data()
     # print('Loans Development:', d.shape)
     # print('Loans Competition:', c.shape)
