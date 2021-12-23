@@ -2,7 +2,7 @@
 import os
 import statistics
 import pandas as pd
-import math
+from sklearn.preprocessing import OneHotEncoder
 
 ### Base Tables ###
 
@@ -80,23 +80,6 @@ def get_transactions_data(): # Transactions (trans_dev + trans_comp)
     competition = pd.read_csv('../data/trans_test.csv', sep=';')
     return dev.append(competition)
 
-def get_birthday_from_birth_number(birth_number):
-    year              = birth_number // 10000
-    month_with_gender = (birth_number % 10000) // 100
-    day               = birth_number % 100
-    month = month_with_gender % 50
-    return int(str(year).zfill(2) + str(month).zfill(2) + str(day).zfill(2))
-
-def get_readable_date(date):
-    year = str(date)[0:2]
-    month = str(date)[2:4]
-    day = str(date)[4:6]
-    return '-'.join(['19' + str(year).zfill(2), str(month).zfill(2), str(day).zfill(2)])
-
-def get_gender_from_birth_number(birth_number):
-    month_with_gender = (birth_number % 10000) // 100
-    return 'Female' if month_with_gender > 50 else 'Male'
-
 def get_client_data(): # Client (client)
     client = pd.read_csv('../data/client.csv', sep=';')
     client['birthday'] = client['birth_number'].apply(get_birthday_from_birth_number)
@@ -112,11 +95,6 @@ def get_disposition_data(): # Disposition (disp)
         'type': 'category',
     })
     return disposition
-
-def modify_transactions_by_type(transactions):
-    transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'] = \
-        transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'].apply(lambda x: -x)
-    return transactions
 
 def get_mean_transaction_data(): # Transactions (mean transaction)
     transactions = get_transactions_data()
@@ -286,162 +264,118 @@ def get_raw_loans_data():
 
 ### Data Transformation ###
 
+def get_birthday_from_birth_number(birth_number):
+    year              = birth_number // 10000
+    month_with_gender = (birth_number % 10000) // 100
+    day               = birth_number % 100
+    month = month_with_gender % 50
+    return int(str(year).zfill(2) + str(month).zfill(2) + str(day).zfill(2))
+
+def get_readable_date(date):
+    year = str(date)[0:2]
+    month = str(date)[2:4]
+    day = str(date)[4:6]
+    return '-'.join(['19' + str(year).zfill(2), str(month).zfill(2), str(day).zfill(2)])
+
+def get_gender_from_birth_number(birth_number):
+    month_with_gender = (birth_number % 10000) // 100
+    return 'Female' if month_with_gender > 50 else 'Male'
+
+def modify_transactions_by_type(transactions):
+    transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'] = \
+        transactions.loc[transactions['type'].isin(['withdrawal', 'withdrawal in cash']), 'amount'].apply(lambda x: -x)
+    return transactions
+
 def normalize(df, columns, normalizer):
     for column in columns:
         df[column] = df[column].divide(df[normalizer])
     return df
 
-def normalize_dict(df, dict):
-    for k, v in dict.items():
-        df[k] = df[k].divide(df[v])
+def get_ages(df, dates, loan_date):
+    for date in dates:
+        df[date] = df.apply(
+            lambda row: row[date] if pd.isnull(row[date]) else int((row[loan_date] - row[date]).days / 365.2425 * 12),
+            axis=1
+        )
     return df
 
-def get_ages(df, creation_dates, loan_date):
-    for creation_date in creation_dates:
-        df[creation_date] = df[creation_date].rsub(df[loan_date])
-        df[creation_date] = df[creation_date].floordiv(10000)
-    return df
-
-def normalize_district(df, info):
-    if info != '':
-        info = '_' + info
-
-    # Normalize Urban Ratio
-    df[f'ratio_urban{info}'] = df[f'ratio_urban{info}'].apply(lambda x: x/100)
+def normalize_district(df):
+    # Convert ratio_urban from percentage to ratio
+    df['ratio_urban'] = df['ratio_urban'] / 100
 
     # Obtain total municipalities
-    municipalities = [f'muni_under499{info}', f'muni_500_1999{info}', f'muni_2000_9999{info}', f'muni_over10000{info}']
+    municipalities = ['muni_under499', 'muni_500_1999', 'muni_2000_9999', 'muni_over10000']
     df['total_muni'] = 0
     for column in municipalities:
-        df['total_muni'] = df['total_muni'].add(df[column])
+        df['total_muni'] = df['total_muni'] + df[column]
     
-    # Normalize municipalities
-    municipalities.append(f'n_cities{info}')
+    # Convert municipality information to ratios
+    municipalities.append('n_cities')
     for column in municipalities:
-        df[column] = df[column].divide(df['total_muni'])
+        df[column] = df[column] / df['total_muni']
 
     return df.drop('total_muni', axis=1)
 
-def normalize_region(df, info):
-    dev, _ = get_raw_loans_data()
-    # The percentages of loans paid per region is calculated based on the dev dataset
-    
-    name = f'name_{info}'
-    region = f'region_{info}'
-    region_non_paid = f'region_non_paid_partial_{info}'
-
-    region_total     = dev.groupby(region).size().rename('total').reset_index()
-    region_by_status = dev.groupby([region,'status']).size().rename('non_paid').reset_index()
-    region_by_status = region_by_status.loc[region_by_status['status'] == 1].drop('status', axis=1)
-    region_partials  = pd.merge(left=region_total, right=region_by_status, on=region)
-    region_partials[region_non_paid] = region_partials['non_paid'].divide(region_partials['total'])
-    region_partials  = region_partials.drop(['non_paid', 'total'], axis=1)
-    
-    df = pd.merge(left=df, right=region_partials, on=region, how='left')
-    df = df.drop([name, region], axis=1)
-    return df
-
 def convert_gender_to_int(x):
     return 1 if x == 'Female' else 0
-
-def convert_disponent_gender_to_int(x):
-    return -1 if x == 'None' else convert_gender_to_int(x)
-
-def convert_disponent_to_int(x):
-    return 0 if x == -1 else 1
-
-def convert_card_to_int(card):
-    if card == 'junior' or card == 'classic' or card == 'gold':
-        return 1
-    return 0
-
-def drop_district_info(d, info):
-    d = d.drop([
-        'name_' + info, 'region_' + info, 'population_' + info,
-        'muni_under499_' + info, 'muni_500_1999_' + info,
-        'muni_2000_9999_' + info, 'muni_over10000_' + info,
-        'n_cities_' + info, 'ratio_urban_' + info,
-        'avg_salary_' + info, 'unemployment_95_' + info,
-        'unemployment_evolution_' + info, 'entrepreneurs_per_1000_' + info,
-        'crimes_95_per_1000_' + info, 'crimes_evolution_' + info
-    ], axis = 1)
-    return d
 
 def process_loan_data(d):
     ### Here are some ideas of what could be done
 
     # Drop ids and disctrict codes (don't drop 'loan_id')
     d = d.drop([
-        'account_id', 'client_id_owner', 'client_id_disponent',
-        'district_id_account', 'district_id_owner', 'district_id_disponent',
-        'code_account', 'code_owner', 'code_disponent', 'disp_id', 'card_id'
+        'account_id', 'district_id', 'code', 'name', 'region', 'disp_id', 'card_id', 'client_id'
     ], axis=1)
     
     # The loan amount is redundant (since we have the number and value of payments: duration, payments)
-    #d = d.drop('amount', axis=1)
+    # d = d.drop('amount', axis=1)
 
-    # The transaction values need to be normalized with the payment
+    # The transaction values need to be normalized with the monthly payments
     d = normalize(d, [
-        'avg_amount', 'avg_balance',
-        'avg_daily_balance', 'balance_deviation', 'balance_distribution_first_quarter',
-        'balance_distribution_median', 'balance_distribution_third_quarter'
+        'avg_amount', 'avg_abs_amount', 'avg_balance',
+        'avg_daily_balance', 'balance_deviation', 
+        'balance_distribution_first_quarter', 'balance_distribution_median', 
+        'balance_distribution_third_quarter'
     ], 'payments')
 
     # Use the payment to normalize salaries
-    d = normalize(d, ['avg_salary_account', 'avg_salary_owner', 'avg_salary_disponent'], 'payments')
-    
-    # Since the payment was used to normalize all the value related variables, it is no longer needed
-    #d = d.drop('payments', axis=1)
+    d = normalize(d, ['avg_salary'], 'payments')
 
-    # Theory: the fact that the account doesn't have a card is information
-    d['type'].fillna('None', inplace=True)
-    # Normalize card information
-    d['card'] = d['type'].apply(convert_card_to_int)
+    # Transform card type information through one hot encoding
+    encoder = OneHotEncoder()
+    one_hot = encoder.fit_transform(d['type'].values.reshape(-1, 1)).toarray()
+    
+    cols = list(encoder.categories_[0])
+    cols[3] = 'none'
+    cols = list(map(lambda x: 'card_' + x, cols))
+
+    card_df = pd.DataFrame(one_hot, columns=cols, dtype=int)
+    d = d.join(card_df)
+
     d = d.drop('type', axis=1)
 
+    d['issued'] = d['issued'].astype('Int64')
     # Theory: dates are not important, but maybe ages are
-    d = get_ages(d, ['date_account', 'issued', 'birthday_owner', 'birthday_disponent'], 'date_loan')
+    for date in ['date_account', 'issued', 'birthday', 'date_loan']:
+        d[date] = pd.to_datetime(d[date].apply(
+            lambda x: get_readable_date(x) if type(x) is int else x))
+
+    d = get_ages(d, ['date_account', 'issued', 'birthday'], 'date_loan')
     d = d.rename(columns={
-        'date_account' : 'age_account',
-        'issued' : 'age_card',
-        'birthday_owner' : 'age_owner',
-        'birthday_disponent' : 'age_disponent'
+        'date_account' : 'age_account_months',
+        'issued' : 'age_card_months',
+        'birthday' : 'age_owner',
     })
+    d = d.drop('date_loan', axis=1)
+    # Convert owner age to years
+    d['age_owner'] = (d['age_owner'] / 12).astype(int)
+
+    # Normalize district data
+    d = normalize_district(d)
+    d = d.drop('population', axis=1)
     
-    # Since the date_loan was used to normalize the dates, it is no longer needed
-    # d = d.drop('date_loan', axis=1)
-    
-    # Theory: ages are not normalized so maybe they can be a problem (?)
-    #d = d.drop(['age_account', 'age_card', 'age_owner', 'age_disponent'], axis=1)
-    
-    # Theory: number of transactions is not normalized so maybe it can be a problem (?)
-    #d = d.drop('n_transactions', axis=1)
-
-    # Normalize the owner's gender and disponent's gender
-    d['gender_owner'] = d['gender_owner'].apply(convert_gender_to_int)
-    d['gender_disponent'] = d['gender_disponent'].apply(convert_disponent_gender_to_int)
-
-    # Theory: The disponent gender doesn't affect the status of the loan, maybe the disponent does
-    d['gender_disponent'].fillna('None', inplace=True)
-    d['disponent'] = d['gender_disponent'].apply(convert_disponent_to_int)
-    #d = d.drop('gender_disponent', axis=1)
-
-    # Theory: Only 1 district will affect the loan
-    #d = drop_district_info(d, 'disponent')
-    #d = drop_district_info(d, 'owner')
-
-    # Normalize district
-    d = normalize_district(d, 'disponent')
-    d = normalize_district(d, 'owner')
-    d = normalize_district(d, 'account')
-
-    # Population is a big number with no normalization, is it a problem?
-    #d = d.drop('population_account', axis=1)
-
-    # Normalize Region (from text to float)
-    d = normalize_region(d, 'disponent')
-    d = normalize_region(d, 'owner')
-    d = normalize_region(d, 'account')
+    # Convert owner's gender to integer
+    d['gender'] = d['gender'].apply(convert_gender_to_int)
 
     return d
 
@@ -497,13 +431,6 @@ def get_loans_data():
     d, c = get_raw_loans_data()
     return process_loan_data(d), process_loan_data(c)
 
-def balance(d):
-    paid   = d[d['status'] == 0]
-    unpaid = d[d['status'] == 1]
-    s_paid = paid.sample(len(unpaid.index), random_state=0)
-    balanced = pd.concat([unpaid, s_paid])
-    return balanced
-
 def set_working_directory():
     cwd = os.getcwd()
     ubuntu_split = cwd.split('/')
@@ -518,23 +445,12 @@ def set_working_directory():
             os.chdir(cwd + '/python')
 
 def main():
-    save_raw_loans_data()
+    print(get_loans_data())
     # d, c = get_loans_data()
     # print('Loans Development:', d.shape)
     # print('Loans Competition:', c.shape)
     # clients = get_clients_data()
     # print('Clients:', clients.shape)
-    # useless = [
-    #     'region_non_paid_partial_owner', 'region_non_paid_partial_account',
-    #     'region_non_paid_partial_disponent', 'population_disponent',
-    #     'muni_under499_disponent', 'muni_500_1999_disponent',
-    #     'muni_2000_9999_disponent', 'muni_over10000_disponent',
-    #     'n_cities_disponent', 'ratio_urban_disponent',
-    #     'avg_salary_disponent', 'unemployment_95_disponent',
-    #     'unemployment_evolution_disponent', 'entrepreneurs_per_1000_disponent',
-    #     'crimes_95_per_1000_disponent', 'crimes_evolution_disponent',
-    #     'gender_disponent', 'age_disponent', 'age_card',
-    # ]
     # (d, c) = (d.drop(useless, axis=1), c.drop(useless, axis=1))
     # d.to_csv('../data/processed/dev_ready.csv', index=False)
     # c.to_csv('../data/processed/comp_ready.csv', index=False)
