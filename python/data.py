@@ -431,6 +431,13 @@ def select(d, columns):
         new[c] = d[c]
     return new
 
+def balance(d):
+    paid   = d[d['status'] == 0]
+    unpaid = d[d['status'] == 1]
+    s_paid = paid.sample(len(unpaid.index), random_state=0)
+    balanced = pd.concat([unpaid, s_paid])
+    return balanced
+
 def set_working_directory():
     cwd = os.getcwd()
     ubuntu_split = cwd.split('/')
