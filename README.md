@@ -1,3 +1,3 @@
-# AC Project 1
+# AC Project
 
-First project of the Machine Learning curricular unit, related to Data Mining.
+Project for the Machine Learning curricular unit, related to Data Mining.
